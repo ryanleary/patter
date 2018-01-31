@@ -2,18 +2,29 @@ try:
     from setuptools import setup, Extension
 except ImportError:
     from distutils.core import setup, Extension
+from pathlib import Path
 
-config = {
-    'description': 'Patter - Speech Recognition Toolkit',
-    'author': 'Ryan Leary',
-    'author_email': 'ryanleary@gmail.com',
-    'version': '0.1',
-    'install_requires': ['torch', 'python-levenshtein', 'librosa', 'tqdm'],
-    'packages': ['patter', 'patter.models', 'patter.util'],
-    'name': 'patter',
-    'scripts': ['scripts/patter-train', 'scripts/patter-test', 'scripts/patter-serve', 'scripts/patter-client'],
-    'test_suite': 'nose.collector',
-    'tests_require': ['nose']
-}
+install_requirements = ["torch", "python-levenshtein", "librosa", "tqdm"]
+test_requirements = ["nose"]
 
-setup(**config)
+script_root = Path("scripts")
+packages = ["patter", "patter.models", "patter.util"]
+scripts = [
+    script_root / "patter-train",
+    script_root / "patter-test",
+    script_root / "patter-serve",
+    script_root / "patter-client",
+    script_root / "patter-model"
+]
+
+setup(
+    description="Patter - Speech Recognition Toolkit",
+    author="Ryan Leary",
+    author_email="ryanleary@gmail.com",
+    version="0.1",
+    install_requires=install_requirements,
+    packages=packages,
+    name="patter",
+    scripts=[str(p) for p in scripts],
+    test_suite="nose.collector",
+    tests_require=test_requirements)
