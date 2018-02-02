@@ -4,7 +4,7 @@ except ImportError:
     from distutils.core import setup, Extension
 from pathlib import Path
 
-install_requirements = ["torch", "python-levenshtein", "librosa", "tqdm"]
+install_requirements = ["torch", "python-levenshtein", "librosa", "tqdm", 'toml']
 test_requirements = ["nose"]
 
 script_root = Path("scripts")
@@ -25,6 +25,6 @@ setup(
     install_requires=install_requirements,
     packages=packages,
     name="patter",
-    scripts=[str(p) for p in scripts],
     test_suite="nose.collector",
+    scripts=[str(p) for p in scripts],
     tests_require=test_requirements)
