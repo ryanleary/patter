@@ -4,7 +4,9 @@ class Trainer(object):
         pass
 
     def train(self, model_config, corpus_config):
-        print("train:", self._train_config, model_config, corpus_config)
+        print("train:", self._train_config)
+        print("\nmodel:", model_config)
+        print("\ncorpus:", corpus_config)
 
     @classmethod
     def load(cls, trainer_config):

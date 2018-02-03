@@ -7,7 +7,7 @@ from .activation import InferenceBatchSoftmax
 
 
 class DeepSpeechOptim(SpeechModel):
-    def __init__(self, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5, audio_conf=None,
+    def __init__(self, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, num_layers=5, audio_conf=None,
                  bidirectional=True, context=20):
         super(DeepSpeechOptim, self).__init__()
 
@@ -16,7 +16,7 @@ class DeepSpeechOptim(SpeechModel):
             audio_conf = {}
         self._version = '0.1.0'
         self._hidden_size = rnn_hidden_size
-        self._hidden_layers = nb_layers
+        self._hidden_layers = num_layers
         self._rnn_type = rnn_type
         self._audio_conf = audio_conf or {}
         self._labels = labels
@@ -37,7 +37,7 @@ class DeepSpeechOptim(SpeechModel):
         )
 
         self.rnns = NoiseRNN(input_size=self.get_rnn_input_size(sample_rate, window_size), hidden_size=rnn_hidden_size,
-                             bidirectional=bidirectional, num_layers=nb_layers, rnn_type=rnn_type)
+                             bidirectional=bidirectional, num_layers=num_layers, rnn_type=rnn_type)
 
         if bidirectional:
             self.lookahead = None
