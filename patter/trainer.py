@@ -1,3 +1,7 @@
+from .config.trainer import TrainerConfiguration
+from marshmallow.exceptions import ValidationError
+
+
 class Trainer(object):
     def __init__(self, train_config):
         self._train_config = train_config
@@ -10,4 +14,9 @@ class Trainer(object):
 
     @classmethod
     def load(cls, trainer_config):
-        return cls(trainer_config)
+        try:
+            cfg = TrainerConfiguration().load(trainer_config)
+        except ValidationError as err:
+            print(err.messages)
+            raise err
+        return cls(cfg.data)
