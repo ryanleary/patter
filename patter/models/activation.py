@@ -18,7 +18,7 @@ class Swish(Module):
     """
 
     def forward(self, input_):
-        return input * torch.sigmoid(input_)
+        return input_ * torch.sigmoid(input_)
 
     def __repr__(self):
         return self.__class__.__name__ + '()'

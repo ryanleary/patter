@@ -1,6 +1,6 @@
 from marshmallow.exceptions import ValidationError
 from .models.deepspeech import DeepSpeechOptim
-from .models.model import SpeechModelConfiguration
+from .config import SpeechModelConfiguration
 
 
 class ModelFactory(object):

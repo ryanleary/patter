@@ -1,6 +1,5 @@
 from marshmallow.exceptions import ValidationError
-from .config.trainer import TrainerConfiguration
-from .models import SpeechModel
+from .config import TrainerConfiguration
 
 
 class Trainer(object):

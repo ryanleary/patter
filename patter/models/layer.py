@@ -10,13 +10,14 @@ class NoiseRNN(nn.Module):
     The noise is drawn from a Normal distribution and the mean/stdev of the distribution may be configured by passing
     a `(mean, stdev)` tuple to the `weight_noise` parameter of the NoiseRNN initialization.
     """
-    def __init__(self, input_size, hidden_size, rnn_type=nn.LSTM, bidirectional=False, num_layers=1, weight_noise=None, sum_directions=True):
+    def __init__(self, input_size, hidden_size, rnn_type=nn.LSTM, bidirectional=False, num_layers=1,
+                 weight_noise=None, sum_directions=True):
         super(NoiseRNN, self).__init__()
         self._input_size = input_size
         self._hidden_size = hidden_size
         self._bidirectional = bidirectional
         self._num_directions = 2 if bidirectional else 1
-        self._weight_noise = weight_noise
+        self._noise = weight_noise
         self._sum_directions = sum_directions
         self.module = rnn_type(input_size=input_size, hidden_size=hidden_size,
                                bidirectional=bidirectional, bias=True, num_layers=num_layers)
@@ -30,10 +31,10 @@ class NoiseRNN(nn.Module):
         self.module.flatten_parameters()
 
     def forward(self, x):
-        if self.training and self._weight_noise is not None:
+        if self.training and self._noise is not None:
             for pn, pv in self.module.named_parameters():
                 if not pn.startswith("bias"):
-                    pv.data.add_(self.get_noise_buffer(pv).normal_(mean=self._weight_noise['mean'], std=self._weight_noise['std']))
+                    pv.data.add_(self.get_noise_buffer(pv).normal_(mean=self._noise['mean'], std=self._noise['std']))
         x, h = self.module(x)
 
         # collapse fwd/bwd output if bidirectional rnn, otherwise do lookahead convolution
@@ -55,10 +56,10 @@ class NoiseRNN(nn.Module):
         return getattr(self, name)
 
     def __repr__(self):
-        if self._weight_noise is None:
+        if self._noise is None:
             noise = "None"
         else:
-            noise = "N({}, {})".format(self._weight_noise['mean'], self._weight_noise['std'])
+            noise = "N({}, {})".format(self._noise['mean'], self._noise['std'])
         return self.__class__.__name__ + '(rnn={}, noise={}, sum_directions={})'.format(
             self.module, noise, self._sum_directions)
 
@@ -86,11 +87,11 @@ class LookaheadConvolution(nn.Module):
         self.weight.data.uniform_(-stdv, stdv)
 
     def forward(self, input_):
-        seq_len = input.size(0)
+        seq_len = input_.size(0)
         # pad the 0th dimension (T/sequence) with zeroes whose number = context
         # Once pytorch's padding functions have settled, should move to those.
         padding = torch.zeros(self.context, *(input_.size()[1:])).type_as(input_.data)
-        x = torch.cat((input, Variable(padding)), 0)
+        x = torch.cat((input_, Variable(padding)), 0)
 
         # add lookahead windows (with context+1 width) as a fourth dimension
         # for each seq-batch-feature combination

@@ -1,7 +1,7 @@
 import math
 import torch.nn as nn
 
-from patter.models.model import SpeechModel, SpeechModelConfiguration
+from patter.models.model import SpeechModel
 from .layer import NoiseRNN, LookaheadConvolution
 from .activation import InferenceBatchSoftmax, Swish
 
@@ -55,9 +55,9 @@ class DeepSpeechOptim(SpeechModel):
         :return: 1D Tensor scaled by model
         """
         seq_len = input_length
-        for mod in self.conv:
-            if type(mod) == nn.modules.conv.Conv2d:
-                seq_len = ((seq_len + 2 * mod.padding[1] - mod.dilation[1] * (mod.kernel_size[1] - 1) - 1) / mod.stride[1] + 1)
+        for m in self.conv:
+            if type(m) == nn.modules.conv.Conv2d:
+                seq_len = ((seq_len + 2 * m.padding[1] - m.dilation[1] * (m.kernel_size[1] - 1) - 1) / m.stride[1] + 1)
         return seq_len.int()
 
     @staticmethod
