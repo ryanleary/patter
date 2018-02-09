@@ -62,6 +62,12 @@ class DeepSpeechOptim(SpeechModel):
 
     @staticmethod
     def _get_cnn_layers(cfg):
+        """
+        Given the array of cnn configuration objects, create a sequential model consisting of Conv2d layers,
+        optional batchnorm, and an activation function.
+        :param cfg: array of CNN configuration objects
+        :return: nn.Sequential of CNNs, BN, and Activations
+        """
         cnns = []
         for x, cnn_cfg in enumerate(cfg):
             in_filters = cfg[x-1]['filters'] if x > 0 else 1
