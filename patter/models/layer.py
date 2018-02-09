@@ -10,13 +10,14 @@ class NoiseRNN(nn.Module):
     The noise is drawn from a Normal distribution and the mean/stdev of the distribution may be configured by passing
     a `(mean, stdev)` tuple to the `weight_noise` parameter of the NoiseRNN initialization.
     """
-    def __init__(self, input_size, hidden_size, rnn_type=nn.LSTM, bidirectional=False, num_layers=1, weight_noise=None):
+    def __init__(self, input_size, hidden_size, rnn_type=nn.LSTM, bidirectional=False, num_layers=1, weight_noise=None, sum_directions=True):
         super(NoiseRNN, self).__init__()
         self._input_size = input_size
         self._hidden_size = hidden_size
         self._bidirectional = bidirectional
         self._num_directions = 2 if bidirectional else 1
         self._weight_noise = weight_noise
+        self._sum_directions = sum_directions
         self.module = rnn_type(input_size=input_size, hidden_size=hidden_size,
                                bidirectional=bidirectional, bias=True, num_layers=num_layers)
 
@@ -32,8 +33,13 @@ class NoiseRNN(nn.Module):
         if self.training and self._weight_noise is not None:
             for pn, pv in self.module.named_parameters():
                 if not pn.startswith("bias"):
-                    pv.data.add_(self.get_noise_buffer(pv).normal_(mean=self._weight_noise[0], std=self._weight_noise[1]))
+                    pv.data.add_(self.get_noise_buffer(pv).normal_(mean=self._weight_noise['mean'], std=self._weight_noise['std']))
         x, h = self.module(x)
+
+        # collapse fwd/bwd output if bidirectional rnn, otherwise do lookahead convolution
+        if self._bidirectional and self._sum_directions:
+            # (TxNxH*2) -> (TxNxH) by sum
+            x = x.view(x.size(0), x.size(1), 2, -1).sum(2).view(x.size(0), x.size(1), -1)
         return x, h
 
     @staticmethod
@@ -47,6 +53,14 @@ class NoiseRNN(nn.Module):
     def get_noise_buffer(self, tensor):
         name = self.get_noise_buffer_name(tensor)
         return getattr(self, name)
+
+    def __repr__(self):
+        if self._weight_noise is None:
+            noise = "None"
+        else:
+            noise = "N({}, {})".format(self._weight_noise['mean'], self._weight_noise['std'])
+        return self.__class__.__name__ + '(rnn={}, noise={}, sum_directions={})'.format(
+            self.module, noise, self._sum_directions)
 
 
 class LookaheadConvolution(nn.Module):
@@ -86,3 +100,6 @@ class LookaheadConvolution(nn.Module):
 
         x = torch.mul(x, self.weight).sum(dim=3)
         return x
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(features={}, context={})'.format(self.n_features, self.context)

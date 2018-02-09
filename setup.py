@@ -8,7 +8,7 @@ install_requirements = ["torch", "python-levenshtein", "librosa", "tqdm", 'toml'
 test_requirements = ["nose"]
 
 script_root = Path("scripts")
-packages = ["patter", "patter.models", "patter.util"]
+packages = ["patter", "patter.config", "patter.decoder", "patter.models", "patter.util"]
 scripts = [
     script_root / "patter-train",
     script_root / "patter-test",

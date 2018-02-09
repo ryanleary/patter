@@ -1,50 +1,49 @@
 import math
 import torch.nn as nn
 
-from . import SpeechModel
+from patter.models.model import SpeechModel, SpeechModelConfiguration
 from .layer import NoiseRNN, LookaheadConvolution
-from .activation import InferenceBatchSoftmax
+from .activation import InferenceBatchSoftmax, Swish
+
+
+activations = {
+    "hardtanh": nn.Hardtanh,
+    "relu": nn.ReLU,
+    "swish": Swish
+}
+
+supported_rnns = {
+    'lstm': nn.LSTM,
+    'rnn': nn.RNN,
+    'gru': nn.GRU
+}
+supported_rnns_inv = dict((v, k) for k, v in supported_rnns.items())
 
 
 class DeepSpeechOptim(SpeechModel):
-    def __init__(self, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, num_layers=5, audio_conf=None,
-                 bidirectional=True, context=20):
+    def loss(self, x, y, x_length=None, y_length=None):
+        pass
+
+    def __init__(self, cfg):
         super(DeepSpeechOptim, self).__init__()
+        self._config = cfg
 
-        # model metadata needed for serialization/deserialization
-        if audio_conf is None:
-            audio_conf = {}
-        self._version = '0.1.0'
-        self._hidden_size = rnn_hidden_size
-        self._hidden_layers = num_layers
-        self._rnn_type = rnn_type
-        self._audio_conf = audio_conf or {}
-        self._labels = labels
-        self._bidirectional = bidirectional
+        self.conv = self._get_cnn_layers(cfg['cnn'])
 
-        sample_rate = self._audio_conf.get("sample_rate", 16000)
-        window_size = self._audio_conf.get("window_size", 0.02)
+        rnn_input_size = self._get_rnn_input_size(cfg['input']['sample_rate'], cfg['input']['window_size'])
+        self.rnns = NoiseRNN(input_size=rnn_input_size, hidden_size=cfg['rnn']['size'],
+                             bidirectional=cfg['rnn']['bidirectional'], num_layers=cfg['rnn']['layers'],
+                             rnn_type=supported_rnns[cfg['rnn']['rnn_type']],
+                             weight_noise=cfg['rnn']['noise'])
 
-        self._activation = nn.Hardtanh(0, 20)
+        # generate the optional lookahead layer and fully-connected layer
+        output = []
+        if not cfg['rnn']['bidirectional']:
+            output.append(LookaheadConvolution(cfg['rnn']['size'], context=cfg['ctx']['context']))
+            output.append(activations[cfg['ctx']['activation']](*cfg['ctx']['activation_params']))
+        output.append(nn.Linear(cfg['rnn']['size'], len(cfg['labels']['labels'])))
 
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(0, 10)),
-            nn.BatchNorm2d(32),
-            self._activation,
-            nn.Conv2d(32, 32, kernel_size=(21, 11), stride=(2, 1), ),
-            nn.BatchNorm2d(32),
-            self._activation
-        )
-
-        self.rnns = NoiseRNN(input_size=self.get_rnn_input_size(sample_rate, window_size), hidden_size=rnn_hidden_size,
-                             bidirectional=bidirectional, num_layers=num_layers, rnn_type=rnn_type)
-
-        if bidirectional:
-            self.lookahead = None
-        else:
-            self.lookahead = nn.Sequential(LookaheadConvolution(rnn_hidden_size, context=context), self._activation)
-
-        self.fc = nn.Linear(rnn_hidden_size, len(self._labels))
+        self.output = nn.Sequential(*output)
         self.inference_softmax = InferenceBatchSoftmax()
 
     def get_seq_lens(self, input_length):
@@ -61,7 +60,22 @@ class DeepSpeechOptim(SpeechModel):
                 seq_len = ((seq_len + 2 * mod.padding[1] - mod.dilation[1] * (mod.kernel_size[1] - 1) - 1) / mod.stride[1] + 1)
         return seq_len.int()
 
-    def get_rnn_input_size(self, sample_rate, window_size):
+    @staticmethod
+    def _get_cnn_layers(cfg):
+        cnns = []
+        for x, cnn_cfg in enumerate(cfg):
+            in_filters = cfg[x-1]['filters'] if x > 0 else 1
+            cnn = nn.Conv2d(in_filters, cnn_cfg['filters'],
+                            kernel_size=tuple(cnn_cfg['kernel']),
+                            stride=tuple(cnn_cfg['stride']),
+                            padding=tuple(cnn_cfg['padding']))
+            cnns.append(cnn)
+            if cnn_cfg['batch_norm']:
+                cnns.append(nn.BatchNorm2d(cnn_cfg['filters']))
+            cnns.append(activations[cnn_cfg['activation']](*cnn_cfg['activation_params']))
+        return nn.Sequential(*cnns)
+
+    def _get_rnn_input_size(self, sample_rate, window_size):
         """
         Calculate the size of tensor generated for a single timestep by the convolutional network
         :param sample_rate: number of samples per second
@@ -89,7 +103,6 @@ class DeepSpeechOptim(SpeechModel):
         :param lengths: (batch,) Sequence_length for each sample in batch
         :return: FloatTensor(batch_size, max_seq_len, num_classes), IntTensor(batch_size)
         """
-        print(x.shape)
         x = self.conv(x)
 
         # collapse cnn channels into a feature vector per timestep
@@ -103,16 +116,8 @@ class DeepSpeechOptim(SpeechModel):
         x, _ = self.rnns(x)
         x = nn.utils.rnn.pad_packed_sequence(x)
 
-        # collapse fwd/bwd output if bidirectional rnn, otherwise do lookahead convolution
-        if self._bidirectional:
-            # (TxNxH*2) -> (TxNxH) by sum
-            x = x.view(x.size(0), x.size(1), 2, -1).sum(2).view(x.size(0), x.size(1), -1)
-        else:
-            # do a lookahead convolution
-            x = self.lookahead(x)
-
         # fully connected layer to output classes
-        x = self.fc(x)
+        x = self.output(x)
         x = x.transpose(0, 1)
 
         # if training, return only logits (ctc loss calculates softmax), otherwise do softmax

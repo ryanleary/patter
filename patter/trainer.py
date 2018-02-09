@@ -1,5 +1,6 @@
-from .config.trainer import TrainerConfiguration
 from marshmallow.exceptions import ValidationError
+from .config.trainer import TrainerConfiguration
+from .models import SpeechModel
 
 
 class Trainer(object):
@@ -7,10 +8,10 @@ class Trainer(object):
         self._train_config = train_config
         pass
 
-    def train(self, model_config, corpus_config):
+    def train(self, model, corpus):
         print("train:", self._train_config)
-        print("\nmodel:", model_config)
-        print("\ncorpus:", corpus_config)
+        print("\nmodel:", model)
+        print("\ncorpus:", corpus)
 
     @classmethod
     def load(cls, trainer_config):

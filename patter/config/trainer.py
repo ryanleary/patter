@@ -1,8 +1,16 @@
-from marshmallow import Schema, fields, post_load
+from marshmallow import Schema, fields
+
 
 class TrainerOutputConfiguration(Schema):
     model_path = fields.String(required=True)
     log_path = fields.String(required=True)
+
+
+class OptimizerSettings(Schema):
+    optimizer = fields.String(required=True)
+    learning_rate = fields.Float(required=True, load_from="lr")
+    momentum = fields.Float(default=0.9)
+    lr_annealing = fields.Float(default=1.1, load_from="anneal")
 
 
 class TrainingSettings(Schema):
@@ -10,10 +18,7 @@ class TrainingSettings(Schema):
     batch_size = fields.Integer(required=True)
     num_workers = fields.Integer(required=True)
     max_norm = fields.Float(required=False, default=400.0)
-
-
-class OptimizerSettings(Schema):
-    optimizer = fields.String(required=True)
+    optimizer = fields.Nested(OptimizerSettings)
 
 
 class TrainerConfiguration(Schema):
@@ -22,4 +27,3 @@ class TrainerConfiguration(Schema):
 
     output = fields.Nested(TrainerOutputConfiguration)
     trainer = fields.Nested(TrainingSettings)
-    optimizer = fields.Nested(OptimizerSettings, attribute="trainer.optimizer")

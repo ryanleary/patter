@@ -34,3 +34,6 @@ class InferenceBatchSoftmax(Module):
             return F.softmax(input_, dim=dim)
         else:
             return input_
+
+    def __repr__(self):
+        return self.__class__.__name__ + '()'
