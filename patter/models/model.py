@@ -12,3 +12,6 @@ class SpeechModel(nn.Module):
     def is_cuda(self) -> bool:
         return self.parameters().next().is_cuda
 
+    @property
+    def config(self) -> dict:
+        return self._config
