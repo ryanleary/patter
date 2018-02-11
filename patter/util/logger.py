@@ -1,54 +1,16 @@
 import os
 from pathlib import Path
-
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-    def __init__(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
+from tensorboardX import SummaryWriter
+from datetime import datetime
+import socket
 
 
 def to_np(x):
     return x.data.cpu().numpy()
 
 
-class BaseLogger(object):
-    def __init__(self):
-        pass
-
-    def init_epoch(self, loss, wer, cer, eval_loss):
-        pass
-
-    def log_epoch(self, epoch, loss_results, wer_results, cer_results, eval_loss=None):
-        pass
-
-    def log_previous_epochs(self, end_epoch, loss_results, wer_results, cer_results):
-        pass
-
-    def log_step(self, step, loss):
-        pass
-
-
-class TensorboardLogger(BaseLogger):
+class TensorboardLogger(object):
     def __init__(self, _id, log_dir, model=None):
-        from tensorboardX import SummaryWriter
-        from datetime import datetime
-        import socket
         expt_name = datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname() + '_' + _id)
         log_dir = Path(log_dir) / expt_name
 
