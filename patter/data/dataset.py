@@ -1,5 +1,4 @@
 import numpy as np
-import json
 import torch
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
@@ -54,8 +53,8 @@ class BucketingSampler(Sampler):
         np.random.shuffle(self.bins)
 
 
-class SpectrogramDataset(Dataset):
-    def __init__(self, manifest_filepath, labels, max_duration=None, min_duration=None):
+class AudioDataset(Dataset):
+    def __init__(self, manifest_filepath, labels, featurizer=None, max_duration=None, min_duration=None):
         """
         Dataset that loads tensors via a json file containing paths to audio files, transcripts, and durations
         (in seconds). Each new line is a different sample. Example below:
@@ -69,30 +68,14 @@ class SpectrogramDataset(Dataset):
         :param normalize: Apply standard mean and deviation normalization to audio tensor
         :param augment(default False):  Apply random tempo and gain perturbations
         """
-        ids = []
-        duration = 0.0
-        filtered_duration = 0.0
-        with open(manifest_filepath) as fh:
-            for line in fh:
-                data = json.loads(line)
-                if min_duration is not None and data['duration'] < min_duration:
-                    filtered_duration += data['duration']
-                    continue
-                if max_duration is not None and data['duration'] > max_duration:
-                    filtered_duration += data['duration']
-                    continue
-                ids.append(data)
-                duration += data['duration']
-        print("Dataset loaded with", duration/3600, "hours. Filtered", filtered_duration/3600, "hours.")
-        self.ids = ids
-        self.size = len(ids)
-        self.duration = duration
+        self.manifest = Manifest(manifest_filepath, max_duration=max_duration, min_duration=min_duration)
+        print("Dataset loaded with", self.manifest.duration/3600, "hours. Filtered", self.manifest.filtered_duration/3600, "hours.")
         self.labels_map = dict([(labels[i], i) for i in range(len(labels))])
-        super(SpectrogramDataset, self).__init__(audio_conf, normalize, augment_config)
+        self.featurizer = featurizer
 
     def __getitem__(self, index):
         sample = self.ids[index]
-        spect = self.parse_audio(sample['audio_filepath'])
+        spect = self.featurizer.load_audio(sample['audio_filepath'])
         transcript = self.parse_transcript(sample['text_filepath'])
         return spect, transcript
 

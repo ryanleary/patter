@@ -1,68 +1,5 @@
 import numpy as np
-import json
-import soundfile
-import random
-
-
-class Perturbation(object):
-    def perturb(self, data):
-        raise NotImplementedError
-
-
-class SpeedPerturbation(Perturbation):
-    def __init__(self, min_rate=0.85, max_rate=1.15, rng=None):
-        self._min_rate = min_rate
-        self._max_rate = max_rate
-        self._rng = random.Random() if rng is None else rng
-
-    def perturb(self, data):
-        speed_rate = self._rng.uniform(self._min_rate, self._max_rate)
-        if speed_rate <= 0:
-            raise ValueError("speed_rate should be greater than zero.")
-        old_length = data._samples.shape[0]
-        new_length = int(old_length / speed_rate)
-        old_indices = np.arange(old_length)
-        new_indices = np.linspace(start=0, stop=old_length, num=new_length)
-        data._samples = np.interp(new_indices, old_indices, data._samples)
-
-
-class GainPerturbation(Perturbation):
-    def __init__(self, min_gain_dbfs=-10, max_gain_dbfs=10, rng=None):
-        self._min_gain_dbfs = min_gain_dbfs
-        self._max_gain_dbfs = max_gain_dbfs
-        self._rng = random.Random() if rng is None else rng
-
-    def perturb(self, data):
-        gain = self._rng.uniform(self._min_gain_dbfs, self._max_gain_dbfs)
-        data._samples *= 10.**(gain / 20.)
-
-
-class AudioAugmentor(object):
-    def __init__(self, perturbations=None, rng=None):
-        self._rng = random.Random() if rng is None else rng
-        self._pipeline = perturbations if perturbations is not None else []
-
-    def perturb(self, segment):
-        for (prob, p) in self._pipeline:
-            if self._rng.random() < prob:
-                p.perturb(segment)
-        return
-
-    @classmethod
-    def from_config(cls, config_file):
-        config = []
-        with open(config_file, "r") as fh:
-            raw_config = json.load(fh)
-        for p in raw_config:
-            if p['type'] not in perturbations:
-                print(p['type'], "perturbation not known. Skipping.")
-                continue
-            perturbation = perturbations[p['type']]
-            config.append((p['prob'], perturbation(**p['params'])))
-        return cls(perturbations=config)
-
-
-perturbations = {"speed": SpeedPerturbation, "gain": GainPerturbation}
+import librosa
 
 
 class AudioSegment(object):
@@ -105,7 +42,8 @@ class AudioSegment(object):
                 "rms=%.2fdB" % (type(self), self.num_samples, self.sample_rate,
                                 self.duration, self.rms_db))
 
-    def _convert_samples_to_float32(self, samples):
+    @staticmethod
+    def _convert_samples_to_float32(samples):
         """Convert sample type to float32.
         Audio sample type is usually integer or float-point.
         Integers will be scaled to [-1, 1] in float32.
@@ -121,8 +59,17 @@ class AudioSegment(object):
         return float32_samples
 
     @classmethod
-    def from_file(cls, filename):
-        samples, sample_rate = soundfile.read(filename, dtype='float32')
+    def from_file(cls, filename, target_sr=None):
+        """
+        Load a file supported by librosa and return as an AudioSegment.
+        :param filename: path of file to load
+        :param target_sr: the desired sample rate
+        :return: numpy array of samples
+        """
+        samples, sample_rate = librosa.load(filename)
+        if target_sr is not None and target_sr != sample_rate:
+            samples = librosa.core.resample(samples, sample_rate, target_sr)
+            sample_rate = target_sr
         return cls(samples, sample_rate)
 
     @property
@@ -145,3 +92,38 @@ class AudioSegment(object):
     def rms_db(self):
         mean_square = np.mean(self._samples**2)
         return 10 * np.log10(mean_square)
+
+    def gain_db(self, gain):
+        self._samples *= 10. ** (gain / 20.)
+
+    def subsegment(self, start_time=None, end_time=None):
+        """Cut the AudioSegment between given boundaries.
+        Note that this is an in-place transformation.
+        :param start_time: Beginning of subsegment in seconds.
+        :type start_time: float
+        :param end_time: End of subsegment in seconds.
+        :type end_time: float
+        :raise ValueError: If start_time or end_time is incorrectly set, e.g. out
+                           of bounds in time.
+        """
+        start_time = 0.0 if start_time is None else start_time
+        end_time = self.duration if end_time is None else end_time
+        if start_time < 0.0:
+            start_time = self.duration + start_time
+        if end_time < 0.0:
+            end_time = self.duration + end_time
+        if start_time < 0.0:
+            raise ValueError("The slice start position (%f s) is out of "
+                             "bounds." % start_time)
+        if end_time < 0.0:
+            raise ValueError("The slice end position (%f s) is out of bounds." %
+                             end_time)
+        if start_time > end_time:
+            raise ValueError("The slice start position (%f s) is later than "
+                             "the end position (%f s)." % (start_time, end_time))
+        if end_time > self.duration:
+            raise ValueError("The slice end position (%f s) is out of bounds "
+                             "(> %f s)" % (end_time, self.duration))
+        start_sample = int(round(start_time * self._sample_rate))
+        end_sample = int(round(end_time * self._sample_rate))
+        self._samples = self._samples[start_sample:end_sample]

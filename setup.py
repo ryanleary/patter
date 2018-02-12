@@ -4,7 +4,8 @@ except ImportError:
     from distutils.core import setup, Extension
 from pathlib import Path
 
-install_requirements = ["torch", "python-levenshtein", "librosa", "tqdm", 'toml', 'tensorboardX', 'marshmallow']
+install_requirements = ["torch", "numpy", "python-levenshtein", "librosa",
+                        "tqdm", 'toml', 'tensorboardX', 'marshmallow']
 test_requirements = ["nose"]
 
 script_root = Path("scripts")
