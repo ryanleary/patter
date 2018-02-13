@@ -2,11 +2,11 @@ import json
 
 
 class Manifest(object):
-    def __init__(self, manifest_filepath, max_duration=None, min_duration=None):
+    def __init__(self, manifest_path, max_duration=None, min_duration=None):
         ids = []
         duration = 0.0
         filtered_duration = 0.0
-        with open(manifest_filepath) as fh:
+        with open(manifest_path) as fh:
             for line in fh:
                 data = json.loads(line)
                 if min_duration is not None and data['duration'] < min_duration:
@@ -27,6 +27,9 @@ class Manifest(object):
 
     def __len__(self):
         return self._size
+
+    def __init__(self):
+        return iter(self._data)
 
     @property
     def duration(self):

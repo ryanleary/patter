@@ -1,0 +1,2 @@
+class PerturbedSpectrogramFeaturizer(object):
+    pass

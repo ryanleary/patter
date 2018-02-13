@@ -1,13 +1,29 @@
 import numpy as np
 import torch
+from .manifest import Manifest
+from patter.config.corpora import CorporaConfiguration
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
+from marshmallow.exceptions import ValidationError
 
 
 class SpeechCorpus(object):
+    def __init__(self, config, labels):
+        self.featurizer = None
+        self.train = AudioDataset(config['train_manifest'], max_duration=config['cfg']['max_duration'], labels=labels,
+                                  min_duration=config['cfg']['min_duration'], featurizer=self.featurizer)
+        self.test = AudioDataset(config['train_manifest'], max_duration=config['cfg']['max_duration'], labels=labels,
+                                 min_duration=config['cfg']['min_duration'], featurizer=self.featurizer)
+        self.config = config
+
     @classmethod
-    def load(cls, config):
-        pass
+    def load(cls, corpora_config, labels):
+        try:
+            cfg = CorporaConfiguration().load(corpora_config)
+        except ValidationError as err:
+            print(err.messages)
+            raise err
+        return cls(cfg.data, labels)
 
 
 def audio_seq_collate_fn(batch):

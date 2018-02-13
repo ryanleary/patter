@@ -12,9 +12,9 @@ class Perturbation(object):
 
 
 class SpeedPerturbation(Perturbation):
-    def __init__(self, min_rate=0.85, max_rate=1.15, rng=None):
-        self._min_rate = min_rate
-        self._max_rate = max_rate
+    def __init__(self, min_speed_rate=0.85, max_speed_rate=1.15, rng=None):
+        self._min_rate = min_speed_rate
+        self._max_rate = max_speed_rate
         self._rng = random.Random() if rng is None else rng
 
     def perturb(self, data):
@@ -36,12 +36,12 @@ class GainPerturbation(Perturbation):
 
 
 class ImpulsePerturbation(Perturbation):
-    def __init__(self, manifest_path, rng=None):
-        self._manifest = Manifest(manifest_path)
+    def __init__(self, manifest_path=None, rng=None):
+        self._manifest = Manifest(smanifest_path)
         self._rng = random.Random() if rng is None else rng
 
     def perturb(self, data):
-        impulse_record = self._rng.sample(len(self._manifest), 1)[0]
+        impulse_record = self._rng.sample(self._manifest, 1)[0]
         impulse = AudioSegment.from_file(impulse_record['audio_filepath'], target_sr=data.sample_rate)
         data._samples = signal.fftconvolve(data.samples, impulse.samples, "full")
 
@@ -67,7 +67,7 @@ class ShiftPerturbation(Perturbation):
 
 
 class NoisePerturbation(Perturbation):
-    def __init__(self, manifest_path, min_snr_db=40, max_snr_db=50, max_gain_db=300.0, rng=None):
+    def __init__(self, manifest_path=None, min_snr_db=40, max_snr_db=50, max_gain_db=300.0, rng=None):
         self._manifest = Manifest(manifest_path)
         self._rng = random.Random() if rng is None else rng
         self._min_snr_db = min_snr_db
@@ -76,7 +76,7 @@ class NoisePerturbation(Perturbation):
 
     def perturb(self, data):
         snr_db = self._rng.uniform(self._min_snr_db, self._max_snr_db)
-        noise_record = self._rng.sample(len(self._manifest), 1)[0]
+        noise_record = self._rng.sample(self._manifest, 1)[0]
         noise = AudioSegment.from_file(noise_record['audio_filepath'], target_sr=data.sample_rate)
         noise_gain_db = min(data.rms_db - noise.rms_db - snr_db, self._max_gain_db)
 
@@ -110,15 +110,13 @@ class AudioAugmentor(object):
         return
 
     @classmethod
-    def from_config(cls, config_file):
-        config = []
-        with open(config_file, "r") as fh:
-            raw_config = json.load(fh)
-        for p in raw_config:
-            if p['type'] not in perturbation_types:
-                print(p['type'], "perturbation not known. Skipping.")
+    def from_config(cls, config):
+        ptbs = []
+        for p in config:
+            if p['aug_type'] not in perturbation_types:
+                print(p['aug_type'], "perturbation not known. Skipping.")
                 continue
-            perturbation = perturbation_types[p['type']]
-            config.append((p['prob'], perturbation(**p['params'])))
-        return cls(perturbations=config)
+            perturbation = perturbation_types[p['aug_type']]
+            ptbs.append((p['prob'], perturbation(**p['cfg'])))
+        return cls(perturbations=ptbs)
 

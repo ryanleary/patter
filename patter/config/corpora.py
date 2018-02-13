@@ -3,7 +3,7 @@ from marshmallow.validate import Range
 
 
 class AugmentationConfig(Schema):
-    manifest = fields.String()
+    manifest_path = fields.String(load_from="manifest")
     min_snr_db = fields.Float()
     max_snr_db = fields.Float()
     min_speed_rate = fields.Float()
@@ -18,7 +18,7 @@ class AugmentationSpec(Schema):
     aug_type = fields.String(load_from="type", required=True)
     prob = fields.Float(required=True, validate=Range(0, 1))
 
-    cfg = fields.Nested(AugmentationConfig)
+    cfg = fields.Nested(AugmentationConfig, load_from="config")
 
 
 class CorporaConfig(Schema):
@@ -30,5 +30,5 @@ class CorporaConfiguration(Schema):
     train_manifest = fields.String(required=True)
     val_manifest = fields.String(required=True)
 
-    config = fields.Nested(CorporaConfig)
-    augmentation = fields.List(AugmentationSpec)
+    cfg = fields.Nested(CorporaConfig, load_from="config")
+    augmentation = fields.Nested(AugmentationSpec, many=True)
