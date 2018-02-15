@@ -28,7 +28,7 @@ class Manifest(object):
     def __len__(self):
         return self._size
 
-    def __init__(self):
+    def __iter__(self):
         return iter(self._data)
 
     @property
@@ -38,3 +38,7 @@ class Manifest(object):
     @property
     def filtered_duration(self):
         return self._filtered_duration
+
+    @property
+    def data(self):
+        return list(self._data)

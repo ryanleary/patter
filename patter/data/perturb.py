@@ -1,4 +1,3 @@
-import json
 import random
 import librosa
 from scipy import signal
@@ -21,6 +20,7 @@ class SpeedPerturbation(Perturbation):
         speed_rate = self._rng.uniform(self._min_rate, self._max_rate)
         if speed_rate <= 0:
             raise ValueError("speed_rate should be greater than zero.")
+        # print("DEBUG: speed:", speed_rate)
         data._samples = librosa.effects.time_stretch(data._samples, speed_rate)
 
 
@@ -32,17 +32,19 @@ class GainPerturbation(Perturbation):
 
     def perturb(self, data):
         gain = self._rng.uniform(self._min_gain_dbfs, self._max_gain_dbfs)
+        # print("DEBUG: gain:", gain)
         data._samples = data._samples * (10.**(gain / 20.))
 
 
 class ImpulsePerturbation(Perturbation):
     def __init__(self, manifest_path=None, rng=None):
-        self._manifest = Manifest(smanifest_path)
+        self._manifest = Manifest(manifest_path)
         self._rng = random.Random() if rng is None else rng
 
     def perturb(self, data):
-        impulse_record = self._rng.sample(self._manifest, 1)[0]
+        impulse_record = self._rng.sample(self._manifest.data, 1)[0]
         impulse = AudioSegment.from_file(impulse_record['audio_filepath'], target_sr=data.sample_rate)
+        # print("DEBUG: impulse:", impulse_record['audio_filepath'])
         data._samples = signal.fftconvolve(data.samples, impulse.samples, "full")
 
 
@@ -57,7 +59,8 @@ class ShiftPerturbation(Perturbation):
         if abs(shift_ms) / 1000 > data.duration:
             # TODO: do something smarter than just ignore this condition
             return
-        shift_samples = shift_ms * data.sample_rate // 1000
+        shift_samples = int(shift_ms * data.sample_rate // 1000)
+        # print("DEBUG: shift:", shift_samples)
         if shift_samples < 0:
             data._samples[-shift_samples:] = data._samples[:shift_samples]
             data._samples[:-shift_samples] = 0
@@ -76,9 +79,10 @@ class NoisePerturbation(Perturbation):
 
     def perturb(self, data):
         snr_db = self._rng.uniform(self._min_snr_db, self._max_snr_db)
-        noise_record = self._rng.sample(self._manifest, 1)[0]
+        noise_record = self._rng.sample(self._manifest.data, 1)[0]
         noise = AudioSegment.from_file(noise_record['audio_filepath'], target_sr=data.sample_rate)
         noise_gain_db = min(data.rms_db - noise.rms_db - snr_db, self._max_gain_db)
+        # print("DEBUG: noise:", snr_db, noise_gain_db, noise_record['audio_filepath'])
 
         # calculate noise segment to use
         start_time = self._rng.uniform(0.0, noise.duration - data.duration)
