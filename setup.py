@@ -5,7 +5,7 @@ except ImportError:
 from pathlib import Path
 
 install_requirements = ["torch", "numpy", "python-levenshtein", "librosa",
-                        "tqdm", 'toml', 'tensorboardX', 'marshmallow']
+                        "tqdm", 'toml', 'tensorboardX', 'marshmallow==2.15.0']
 test_requirements = ["nose"]
 
 script_root = Path("scripts")

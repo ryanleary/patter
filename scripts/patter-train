@@ -23,14 +23,21 @@ def main():
     # load configurations
     with open(args.corpus_config, "r") as fh:
         corpus_config = toml.load(fh)
-    with open(args.model_config, "r") as fh:
-        model_config = toml.load(fh)
     with open(args.training_config, "r") as fh:
         training_config = toml.load(fh)
 
-    # set up trainer, model, and corpus
+    # initialize the model to train
+    if args.model_path is not None:
+        model = ModelFactory.load(args.model_path)
+    else:
+        with open(args.model_config, "r") as fh:
+            model_config = toml.load(fh)
+        model = ModelFactory.create(model_config)
+
+    # set up trainer and corpus
     trainer = Trainer.load(training_config, tqdm=args.progress)
-    model = ModelFactory.create(model_config)
+
+    # load the corpora
     train_corpus = AudioDataset.from_config(corpus_config, model.input_cfg, model.labels, manifest="train")
     val_corpus = AudioDataset.from_config(corpus_config, model.input_cfg, model.labels, manifest="val")
 
