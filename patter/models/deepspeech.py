@@ -27,8 +27,11 @@ class DeepSpeechOptim(SpeechModel):
     def __init__(self, cfg):
         super(DeepSpeechOptim, self).__init__()
         self._config = cfg
-
+        self.input_cfg = cfg['input']
         self.conv = self._get_cnn_layers(cfg['cnn'])
+
+        # Add a `\0` label as a "BLANK" symbol for CTC
+        self.labels = ['\0'] + cfg['labels']['labels']
 
         rnn_input_size = self._get_rnn_input_size(cfg['input']['sample_rate'], cfg['input']['window_size'])
         self.rnns = NoiseRNN(input_size=rnn_input_size, hidden_size=cfg['rnn']['size'],
@@ -41,7 +44,7 @@ class DeepSpeechOptim(SpeechModel):
         if not cfg['rnn']['bidirectional']:
             output.append(LookaheadConvolution(cfg['rnn']['size'], context=cfg['ctx']['context']))
             output.append(activations[cfg['ctx']['activation']](*cfg['ctx']['activation_params']))
-        output.append(nn.Linear(cfg['rnn']['size'], len(cfg['labels']['labels'])))
+        output.append(nn.Linear(cfg['rnn']['size'], len(self.labels)))
 
         self.output = nn.Sequential(*output)
         self.inference_softmax = InferenceBatchSoftmax()

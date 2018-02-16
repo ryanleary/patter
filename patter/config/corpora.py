@@ -26,9 +26,13 @@ class CorporaConfig(Schema):
     max_duration = fields.Float(missing=None)
 
 
-class CorporaConfiguration(Schema):
-    train_manifest = fields.String(required=True)
-    val_manifest = fields.String(required=True)
+class DatasetConfig(Schema):
+    manifest = fields.String(required=True)
+    name = fields.String(required=True)
+    augment = fields.Boolean(required=False, default=False, missing=False)
 
+
+class CorporaConfiguration(Schema):
+    datasets = fields.Nested(DatasetConfig, load_from="dataset", many=True)
     cfg = fields.Nested(CorporaConfig, load_from="config")
-    augmentation = fields.Nested(AugmentationSpec, many=True)
+    augmentation = fields.Nested(AugmentationSpec, many=True, missing=[])

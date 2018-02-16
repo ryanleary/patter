@@ -10,8 +10,8 @@ def to_np(x):
 
 
 class TensorboardLogger(object):
-    def __init__(self, _id, log_dir, model=None):
-        expt_name = datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname() + '_' + _id)
+    def __init__(self, tb_id, log_dir, model=None):
+        expt_name = datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname() + '_' + tb_id
         log_dir = Path(log_dir) / expt_name
 
         try:
@@ -27,7 +27,7 @@ class TensorboardLogger(object):
                     raise
 
         self._writer = SummaryWriter(str(log_dir))
-        self._id = _id
+        self._id = tb_id
         self._model = model
 
     def log_step(self, step, loss):

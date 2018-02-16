@@ -3,15 +3,16 @@
 import argparse
 import toml
 from patter import Trainer, ModelFactory
-from patter.util import SpeechCorpus
+from patter.data import AudioDataset
 
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Patter STT Trainer")
     parser.add_argument("--corpus-config", required=True, help="Configuration file specifying corpus")
     parser.add_argument("--training-config", required=True, help="Configuration file specifying training parameters")
-    parser.add_argument("--model-path", required=False, help="Begin training with this model")
     parser.add_argument("--model-config", required=False, help="Configuration file specifying model settings")
+    parser.add_argument("--progress", action="store_true", help="If true, display progress bars, else use text output")
+    # parser.add_argument("--model-path", required=False, help="Begin training with this model")
 
     return parser
 
@@ -27,11 +28,14 @@ def main():
     with open(args.training_config, "r") as fh:
         training_config = toml.load(fh)
 
-    trainer = Trainer.load(training_config)
-    corpus = SpeechCorpus.load(corpus_config)
+    # set up trainer, model, and corpus
+    trainer = Trainer.load(training_config, tqdm=args.progress)
     model = ModelFactory.create(model_config)
+    train_corpus = AudioDataset.from_config(corpus_config, model.input_cfg, model.labels, manifest="train")
+    val_corpus = AudioDataset.from_config(corpus_config, model.input_cfg, model.labels, manifest="val")
 
-    trainer.train(model, corpus)
+    # kick off the model training
+    trainer.train(model, train_corpus, eval=val_corpus)
 
 
 if __name__ == '__main__':

@@ -36,6 +36,8 @@ class ContextConfiguration(Schema):
 
 
 class InputConfiguration(Schema):
+    feat_type = fields.String(required=True, default="stft", missing="stft", load_from="type")
+    normalize = fields.Boolean(default=True, missing=True)
     sample_rate = fields.Int(default=16000)
     window_size = fields.Float(default=0.02)
     window_stride = fields.Float(default=0.01)

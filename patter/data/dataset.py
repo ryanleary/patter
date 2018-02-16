@@ -1,29 +1,11 @@
 import numpy as np
 import torch
 from .manifest import Manifest
+from .features import PerturbedSpectrogramFeaturizer
 from patter.config.corpora import CorporaConfiguration
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
 from marshmallow.exceptions import ValidationError
-
-
-class SpeechCorpus(object):
-    def __init__(self, config, labels):
-        self.featurizer = None
-        self.train = AudioDataset(config['train_manifest'], max_duration=config['cfg']['max_duration'], labels=labels,
-                                  min_duration=config['cfg']['min_duration'], featurizer=self.featurizer)
-        self.test = AudioDataset(config['train_manifest'], max_duration=config['cfg']['max_duration'], labels=labels,
-                                 min_duration=config['cfg']['min_duration'], featurizer=self.featurizer)
-        self.config = config
-
-    @classmethod
-    def load(cls, corpora_config, labels):
-        try:
-            cfg = CorporaConfiguration().load(corpora_config)
-        except ValidationError as err:
-            print(err.messages)
-            raise err
-        return cls(cfg.data, labels)
 
 
 def audio_seq_collate_fn(batch):
@@ -70,7 +52,7 @@ class BucketingSampler(Sampler):
 
 
 class AudioDataset(Dataset):
-    def __init__(self, manifest_filepath, labels, featurizer=None, max_duration=None, min_duration=None):
+    def __init__(self, manifest_filepath, labels, featurizer, max_duration=None, min_duration=None):
         """
         Dataset that loads tensors via a json file containing paths to audio files, transcripts, and durations
         (in seconds). Each new line is a different sample. Example below:
@@ -78,22 +60,23 @@ class AudioDataset(Dataset):
         {"audio_filepath": "/path/to/audio.wav", "text_filepath": "/path/to/audio.txt", "duration": 23.147}
         ...
 
-        :param audio_conf: Dictionary containing the sample rate, window and the window length/stride in seconds
         :param manifest_filepath: Path to manifest csv as describe above
         :param labels: String containing all the possible characters to map to
-        :param normalize: Apply standard mean and deviation normalization to audio tensor
-        :param augment(default False):  Apply random tempo and gain perturbations
+        :param featurizer: Initialized featurizer class that converts paths of audio to feature tensors
+        :param max_duration: If audio exceeds this length, do not include in dataset
+        :param min_duration: If audio is less than this length, do not include in dataset
         """
         self.manifest = Manifest(manifest_filepath, max_duration=max_duration, min_duration=min_duration)
-        print("Dataset loaded with", self.manifest.duration/3600, "hours. Filtered", self.manifest.filtered_duration/3600, "hours.")
+        print("Dataset loaded with {} hours. Filtered {} hours.".format(self.manifest.duration/3600,
+                                                                        self.manifest.filtered_duration/3600))
         self.labels_map = dict([(labels[i], i) for i in range(len(labels))])
         self.featurizer = featurizer
 
     def __getitem__(self, index):
-        sample = self.ids[index]
-        spect = self.featurizer.load_audio(sample['audio_filepath'])
+        sample = self.manifest[index]
+        features = self.featurizer.process(sample['audio_filepath'])
         transcript = self.parse_transcript(sample['text_filepath'])
-        return spect, transcript
+        return features, transcript
 
     def parse_transcript(self, transcript_path):
         with open(transcript_path, 'r') as transcript_file:
@@ -102,4 +85,23 @@ class AudioDataset(Dataset):
         return transcript
 
     def __len__(self):
-        return self.size
+        return len(self.manifest)
+
+    @classmethod
+    def from_config(cls, corpus_config, feature_config, labels, manifest="train"):
+        try:
+            cfg = CorporaConfiguration().load(corpus_config)
+        except ValidationError as err:
+            raise err
+        config = cfg.data
+        datasets = {x['name']: x for x in config['datasets']}
+        if manifest not in datasets:
+            raise KeyError("Requested dataset ({}) doesn't exist.".format(manifest))
+        dataset = datasets[manifest]
+
+        augmentation_config = config['augmentation'] if dataset['augment'] else []
+        featurizer = PerturbedSpectrogramFeaturizer.from_config(feature_config,
+                                                                perturbation_configs=augmentation_config)
+
+        return cls(dataset['manifest'], labels, featurizer, max_duration=config['cfg']['max_duration'],
+                   min_duration=config['cfg']['min_duration'])
