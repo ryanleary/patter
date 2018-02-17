@@ -1,6 +1,7 @@
 import math
 import torch.nn as nn
 
+from warpctc_pytorch import CTCLoss
 from patter.models.model import SpeechModel
 from .layer import NoiseRNN, LookaheadConvolution
 from .activation import InferenceBatchSoftmax, Swish
@@ -21,14 +22,20 @@ supported_rnns_inv = dict((v, k) for k, v in supported_rnns.items())
 
 
 class DeepSpeechOptim(SpeechModel):
+    def train(self, mode=True):
+        if self.mode and self.loss_func is None:
+            self.loss_func = CTCLoss()
+        super().train(mode=mode)
+
     def loss(self, x, y, x_length=None, y_length=None):
-        pass
+        return self.loss_func(x, y, x_length, y_length)
 
     def __init__(self, cfg):
         super(DeepSpeechOptim, self).__init__()
         self._config = cfg
         self.input_cfg = cfg['input']
         self.conv = self._get_cnn_layers(cfg['cnn'])
+        self.loss_func = None
 
         # Add a `\0` label as a "BLANK" symbol for CTC
         self.labels = ['\0'] + cfg['labels']['labels']

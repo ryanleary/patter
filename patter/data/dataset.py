@@ -67,8 +67,8 @@ class AudioDataset(Dataset):
         :param min_duration: If audio is less than this length, do not include in dataset
         """
         self.manifest = Manifest(manifest_filepath, max_duration=max_duration, min_duration=min_duration)
-        print("Dataset loaded with {} hours. Filtered {} hours.".format(self.manifest.duration/3600,
-                                                                        self.manifest.filtered_duration/3600))
+        print("Dataset loaded with {0:.2f} hours. Filtered {1:.2f} hours.".format(self.manifest.duration/3600,
+                                                                                  self.manifest.filtered_duration/3600))
         self.labels_map = dict([(labels[i], i) for i in range(len(labels))])
         self.featurizer = featurizer
 
