@@ -12,7 +12,7 @@ def get_parser():
     parser.add_argument("--training-config", required=True, help="Configuration file specifying training parameters")
     parser.add_argument("--model-config", required=False, help="Configuration file specifying model settings")
     parser.add_argument("--progress", action="store_true", help="If true, display progress bars, else use text output")
-    # parser.add_argument("--model-path", required=False, help="Begin training with this model")
+    parser.add_argument("--model-path", required=False, help="Begin training with this model")
 
     return parser
 

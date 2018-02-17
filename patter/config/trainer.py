@@ -10,6 +10,7 @@ class OptimizerSettings(Schema):
     optimizer = fields.String(required=True)
     learning_rate = fields.Float(required=True, load_from="lr")
     momentum = fields.Float(default=0.9)
+    use_nesterov = fields.Boolean(default=True, missing=True)
     lr_annealing = fields.Float(default=1.1, load_from="anneal")
 
 
