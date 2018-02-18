@@ -28,6 +28,9 @@ class Trainer(object):
         else:
             eval_loader = None
 
+        if self.cuda:
+            model = model.cuda()
+
         # set up optimizer
         opt_cfg = self.cfg['optimizer']
         optimizer = torch.optim.SGD(model.parameters(), lr=opt_cfg['learning_rate'],

@@ -4,7 +4,7 @@ except ImportError:
     from distutils.core import setup, Extension
 from pathlib import Path
 
-install_requirements = ["torch", "numpy", "python-levenshtein", "librosa",
+install_requirements = ["torch", "numpy", "python-levenshtein", "librosa", "SoundFile",
                         "tqdm", 'toml', 'tensorboardX', 'marshmallow==2.15.0']
 test_requirements = ["nose"]
 

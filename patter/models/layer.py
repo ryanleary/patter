@@ -37,6 +37,7 @@ class NoiseRNN(nn.Module):
                     pv.data.add_(self.get_noise_buffer(pv).normal_(mean=self._noise['mean'], std=self._noise['std']))
         x, h = self.module(x)
 
+        x, _ = nn.utils.rnn.pad_packed_sequence(x)
         # collapse fwd/bwd output if bidirectional rnn, otherwise do lookahead convolution
         if self._bidirectional and self._sum_directions:
             # (TxNxH*2) -> (TxNxH) by sum

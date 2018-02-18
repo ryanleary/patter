@@ -23,7 +23,7 @@ supported_rnns_inv = dict((v, k) for k, v in supported_rnns.items())
 
 class DeepSpeechOptim(SpeechModel):
     def train(self, mode=True):
-        if self.mode and self.loss_func is None:
+        if mode and self.loss_func is None:
             self.loss_func = CTCLoss()
         super().train(mode=mode)
 
@@ -130,7 +130,6 @@ class DeepSpeechOptim(SpeechModel):
         output_lengths = self.get_seq_lens(lengths).data.tolist()
         x = nn.utils.rnn.pack_padded_sequence(x, output_lengths)
         x, _ = self.rnns(x)
-        x = nn.utils.rnn.pad_packed_sequence(x)
 
         # fully connected layer to output classes
         x = self.output(x)
