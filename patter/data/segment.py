@@ -1,6 +1,6 @@
 import numpy as np
 import librosa
-import pysoundfile as sf
+import soundfile as sf
 
 
 class AudioSegment(object):
@@ -68,6 +68,7 @@ class AudioSegment(object):
         :return: numpy array of samples
         """
         samples, sample_rate = sf.read(filename)
+        samples = samples.transpose()
         if target_sr is not None and target_sr != sample_rate:
             samples = librosa.core.resample(samples, sample_rate, target_sr)
             sample_rate = target_sr

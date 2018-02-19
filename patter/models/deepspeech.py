@@ -127,8 +127,8 @@ class DeepSpeechOptim(SpeechModel):
         x = x.transpose(1, 2).transpose(0, 1).contiguous()  # TxNxH
 
         # convert padded matrix to PackedSequence, run rnn, and convert back
-        output_lengths = self.get_seq_lens(lengths).data.tolist()
-        x = nn.utils.rnn.pack_padded_sequence(x, output_lengths)
+        output_lengths = self.get_seq_lens(lengths)
+        x = nn.utils.rnn.pack_padded_sequence(x, output_lengths.data.tolist())
         x, _ = self.rnns(x)
 
         # fully connected layer to output classes

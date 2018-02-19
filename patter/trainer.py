@@ -70,7 +70,7 @@ class Trainer(object):
 
             # compute output
             output, output_len = model(feat, feat_len)
-            loss = model.loss(output, output_len, target, target_len)
+            loss = model.loss(output, target, output_len, target_len)
 
             # munge the loss
             avg_loss = loss.data.sum() / feat.size(0)  # average the loss by minibatch
