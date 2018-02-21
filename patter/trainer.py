@@ -35,7 +35,7 @@ class Trainer(object):
         opt_cfg = self.cfg['optimizer']
         optimizer = torch.optim.SGD(model.parameters(), lr=opt_cfg['learning_rate'],
                                     momentum=opt_cfg['momentum'], nesterov=opt_cfg['use_nesterov'])
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=opt_cfg['anneal'])
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=opt_cfg['lr_annealing'])
 
         # primary training loop
         best_wer = math.inf
