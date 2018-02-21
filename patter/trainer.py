@@ -35,11 +35,14 @@ class Trainer(object):
         opt_cfg = self.cfg['optimizer']
         optimizer = torch.optim.SGD(model.parameters(), lr=opt_cfg['learning_rate'],
                                     momentum=opt_cfg['momentum'], nesterov=opt_cfg['use_nesterov'])
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=opt_cfg['anneal'])
 
         # primary training loop
         best_wer = math.inf
+
         for epoch in range(self.cfg['epochs']):
             # adjust lr
+            scheduler.step()
 
             avg_loss = self.train_epoch(train_loader, model, optimizer, epoch)
             print('Training Summary Epoch: [{0}]\tAverage Loss {loss:.3f}\t'.format(epoch + 1, loss=avg_loss))
