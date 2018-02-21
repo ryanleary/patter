@@ -43,6 +43,7 @@ class Trainer(object):
         for epoch in range(self.cfg['epochs']):
             # adjust lr
             scheduler.step()
+            print("Learning rate annealed to {0:.6f}".format(scheduler.get_lr()[0]))
 
             avg_loss = self.train_epoch(train_loader, model, optimizer, epoch)
             print('Training Summary Epoch: [{0}]\tAverage Loss {loss:.3f}\t'.format(epoch + 1, loss=avg_loss))
