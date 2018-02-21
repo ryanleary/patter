@@ -133,8 +133,7 @@ class DeepSpeechOptim(SpeechModel):
 
         # fully connected layer to output classes
         x = self.output(x)
-        x = x.transpose(0, 1)
 
         # if training, return only logits (ctc loss calculates softmax), otherwise do softmax
-        x = self.inference_softmax(x)
+        x = self.inference_softmax(x, dim=1)
         return x, output_lengths

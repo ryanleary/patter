@@ -67,6 +67,8 @@ class Trainer(object):
 
             # create variables
             feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, requires_grad=False) for i in data)
+            if self.cuda:
+                feat = feat.cuda()
 
             # compute output
             output, output_len = model(feat, feat_len)
@@ -86,6 +88,10 @@ class Trainer(object):
             if self.max_norm:
                 torch.nn.utils.clip_grad_norm(model.parameters(), self.max_norm)
             optimizer.step()
+
+            del loss
+            del output
+            del output_len
 
             # measure time taken
             batch_time.update(time.time() - end)
@@ -113,4 +119,5 @@ def validate(val_loader, model):
     losses = AverageMeter()
     wers = AverageMeter()
     cers = AverageMeter()
+    return wers.avg, cers.avg, losses.avg
     pass
