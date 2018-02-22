@@ -25,12 +25,14 @@ class Trainer(object):
                                   pin_memory=True, batch_sampler=train_sampler)
         if eval is not None:
             eval_loader = DataLoader(eval, num_workers=self.cfg['num_workers'], collate_fn=audio_seq_collate_fn,
-                                     pin_memory=True)
+                                     pin_memory=True, batch_size=self.cfg['batch_size'])
         else:
             eval_loader = None
 
         if self.cuda:
             model = model.cuda()
+
+        print(model)
 
         # set up optimizer
         opt_cfg = self.cfg['optimizer']
@@ -76,6 +78,8 @@ class Trainer(object):
                 feat = feat.cuda()
 
             # compute output
+            # feat is (batch, 1,  feat_dim,  seq_len)
+            # output is (seq_len, batch, output_dim)
             output, output_len = model(feat, feat_len)
             loss = model.loss(output, target, output_len, target_len)
 
@@ -148,8 +152,8 @@ def validate(val_loader, model, decoder=None):
         output, output_len = model(feat, feat_len)
 
         # do the decode
-        decoded_output, _ = decoder.decode(output.data, output_len.data)
-        target_strings = decoder.convert_to_strings(split_targets(target))
+        decoded_output, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)
+        target_strings = decoder.convert_to_strings(split_targets(target.data, target_len.data))
         for x in range(len(target_strings)):
             transcript, reference = decoded_output[x][0], target_strings[x][0]
             wer += decoder.wer(transcript, reference) / float(len(reference.split()))
