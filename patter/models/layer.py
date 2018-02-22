@@ -32,10 +32,21 @@ class NoiseRNN(nn.Module):
 
     def forward(self, x):
         if self.training and self._noise is not None:
+            # generate new set of random vectors
+            for tensor in self._buffers:
+                tensor.normal_(mean=self._noise['mean'], std=self._noise['std'])
+
+            # add random vectors to weights
             for pn, pv in self.module.named_parameters():
                 if not pn.startswith("bias"):
-                    pv.data.add_(self.get_noise_buffer(pv).normal_(mean=self._noise['mean'], std=self._noise['std']))
+                    pv.data.add_(self.get_noise_buffer(pv))
         x, h = self.module(x)
+
+        if self.training and self._noise is not None:
+            # remove random vectors from weights
+            for pn, pv in self.module.named_parameters():
+                if not pn.startswith("bias"):
+                    pv.data.sub_(self.get_noise_buffer(pv))
 
         x, _ = nn.utils.rnn.pad_packed_sequence(x)
         # collapse fwd/bwd output if bidirectional rnn, otherwise do lookahead convolution
