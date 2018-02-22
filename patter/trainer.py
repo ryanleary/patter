@@ -48,8 +48,8 @@ class Trainer(object):
             avg_loss = self.train_epoch(train_loader, model, optimizer, epoch)
             print('Training Summary Epoch: [{0}]\tAverage Loss {loss:.3f}\t'.format(epoch + 1, loss=avg_loss))
 
-            avg_wer, avg_cer, avg_loss = validate(eval_loader, model)
-            print('Validation Summary Epoch: [{0}]\tAverage WER {wer:.3f}\tAverage CER {cer:.3f}\t'
+            avg_wer, avg_cer = validate(eval_loader, model)
+            print('Validation Summary Epoch: [{0}]\tAverage WER {wer:.3f}\tAverage CER {cer:.3f}'
                   .format(epoch + 1, wer=avg_wer, cer=avg_cer))
 
             if avg_wer < best_wer:
@@ -118,10 +118,40 @@ class Trainer(object):
             raise err
         return cls(cfg.data, tqdm=tqdm)
 
+
 def validate(val_loader, model):
     batch_time = AverageMeter()
     losses = AverageMeter()
     wers = AverageMeter()
     cers = AverageMeter()
+
+    model.eval()
+
+    end = time.time()
+    for i, data in enumerate(val_loader):
+        # create variables
+        feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, volatile=True) for i in data)
+        if model.is_cuda:
+            feat = feat.cuda()
+
+        # compute output
+        output, output_len = model(feat, feat_len)
+        loss = model.loss(output, target, output_len, target_len)
+
+        # munge the loss
+        avg_loss = loss.data.sum() / feat.size(0)  # average the loss by minibatch
+        inf = math.inf
+        if avg_loss == inf or avg_loss == -inf:
+            print("WARNING: received an inf loss, setting loss value to 0")
+            avg_loss = 0
+        losses.update(avg_loss, feat.size(0))
+
+        del loss
+        del output
+        del output_len
+
+        # measure time taken
+        batch_time.update(time.time() - end)
+        end = time.time()
+
     return wers.avg, cers.avg, losses.avg
-    pass

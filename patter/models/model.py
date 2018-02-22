@@ -2,6 +2,9 @@ import torch.nn as nn
 
 
 class SpeechModel(nn.Module):
+    def __init__(self):
+        super(SpeechModel, self).__init__()
+
     def forward(self, _input, lengths):
         raise NotImplementedError
 
@@ -10,7 +13,7 @@ class SpeechModel(nn.Module):
 
     @property
     def is_cuda(self) -> bool:
-        return self.parameters().next().is_cuda
+        return next(self.parameters()).is_cuda
 
     @property
     def config(self) -> dict:
