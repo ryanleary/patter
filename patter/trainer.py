@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 from marshmallow.exceptions import ValidationError
 from .config import TrainerConfiguration
+from .decoder import GreedyCTCDecoder
 from .data import BucketingSampler, audio_seq_collate_fn
 from .util import AverageMeter
 
@@ -119,15 +120,24 @@ class Trainer(object):
         return cls(cfg.data, tqdm=tqdm)
 
 
-def validate(val_loader, model):
+def split_targets(targets, target_sizes):
+    results = []
+    offset = 0
+    for size in target_sizes:
+        results.append(targets[offset:offset + size])
+        offset += size
+    return results
+
+
+def validate(val_loader, model, decoder=None):
+    if decoder is None:
+        decoder = GreedyCTCDecoder(model.labels)
     batch_time = AverageMeter()
-    losses = AverageMeter()
-    wers = AverageMeter()
-    cers = AverageMeter()
 
     model.eval()
 
     end = time.time()
+    wer, cer = 0.0, 0.0
     for i, data in enumerate(val_loader):
         # create variables
         feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, volatile=True) for i in data)
@@ -136,22 +146,22 @@ def validate(val_loader, model):
 
         # compute output
         output, output_len = model(feat, feat_len)
-        loss = model.loss(output, target, output_len, target_len)
 
-        # munge the loss
-        avg_loss = loss.data.sum() / feat.size(0)  # average the loss by minibatch
-        inf = math.inf
-        if avg_loss == inf or avg_loss == -inf:
-            print("WARNING: received an inf loss, setting loss value to 0")
-            avg_loss = 0
-        losses.update(avg_loss, feat.size(0))
+        # do the decode
+        decoded_output, _ = decoder.decode(output.data, output_len.data)
+        target_strings = decoder.convert_to_strings(split_targets(target))
+        for x in range(len(target_strings)):
+            transcript, reference = decoded_output[x][0], target_strings[x][0]
+            wer += decoder.wer(transcript, reference) / float(len(reference.split()))
+            cer += decoder.cer(transcript, reference) / float(len(reference))
 
-        del loss
         del output
         del output_len
 
         # measure time taken
         batch_time.update(time.time() - end)
         end = time.time()
+    wer = wer * 100 / len(val_loader.dataset)
+    cer = cer * 100 / len(val_loader.dataset)
 
-    return wers.avg, cers.avg, losses.avg
+    return wer, cer
