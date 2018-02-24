@@ -33,7 +33,7 @@ class NoiseRNN(nn.Module):
         x = nn.utils.rnn.pack_padded_sequence(x, lengths.data.tolist())
         if self.training and self._noise is not None:
             # generate new set of random vectors
-            for tensor in self._buffers:
+            for _, tensor in self._buffers.items():
                 tensor.normal_(mean=self._noise['mean'], std=self._noise['std'])
 
             # add random vectors to weights
