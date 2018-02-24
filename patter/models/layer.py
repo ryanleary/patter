@@ -16,7 +16,6 @@ class NoiseRNN(nn.Module):
         self._input_size = input_size
         self._hidden_size = hidden_size
         self._bidirectional = bidirectional
-        self._num_directions = 2 if bidirectional else 1
         self._noise = weight_noise
         self._sum_directions = sum_directions
         self.module = rnn_type(input_size=input_size, hidden_size=hidden_size,
@@ -30,7 +29,8 @@ class NoiseRNN(nn.Module):
     def flatten_parameters(self):
         self.module.flatten_parameters()
 
-    def forward(self, x):
+    def forward(self, x, lengths):
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths.data.tolist())
         if self.training and self._noise is not None:
             # generate new set of random vectors
             for tensor in self._buffers:

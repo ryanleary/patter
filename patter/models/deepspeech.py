@@ -31,8 +31,7 @@ class DeepSpeechOptim(SpeechModel):
         return self.loss_func(x, y, x_length, y_length)
 
     def __init__(self, cfg):
-        super(DeepSpeechOptim, self).__init__()
-        self._config = cfg
+        super(DeepSpeechOptim, self).__init__(cfg)
         self.input_cfg = cfg['input']
         self.conv = self._get_cnn_layers(cfg['cnn'])
         self.loss_func = None
@@ -126,10 +125,8 @@ class DeepSpeechOptim(SpeechModel):
         x = x.view(sizes[0], sizes[1] * sizes[2], sizes[3])  # Collapse feature dimension
         x = x.transpose(1, 2).transpose(0, 1).contiguous()  # TxNxH
 
-        # convert padded matrix to PackedSequence, run rnn, and convert back
         output_lengths = self.get_seq_lens(lengths)
-        x = nn.utils.rnn.pack_padded_sequence(x, output_lengths.data.tolist())
-        x, _ = self.rnns(x)
+        x, _ = self.rnns(x, output_lengths)
 
         # fully connected layer to output classes
         x = self.output(x)

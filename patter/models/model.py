@@ -2,8 +2,9 @@ import torch.nn as nn
 
 
 class SpeechModel(nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super(SpeechModel, self).__init__()
+        self._config = cfg
 
     def forward(self, _input, lengths):
         raise NotImplementedError
@@ -18,3 +19,28 @@ class SpeechModel(nn.Module):
     @property
     def config(self) -> dict:
         return self._config
+
+    @staticmethod
+    def serialize(model, optimizer=None, epoch=None, iteration=None, loss_results=None,
+                  cer_results=None, wer_results=None, avg_loss=None, meta=None):
+        model_is_cuda = next(model.parameters()).is_cuda
+        model = model.module if model_is_cuda else model
+        package = {
+            'config': model.config,
+            'state_dict': model.state_dict()
+        }
+        if optimizer is not None:
+            package['optim_dict'] = optimizer.state_dict()
+        if avg_loss is not None:
+            package['avg_loss'] = avg_loss
+        if epoch is not None:
+            package['epoch'] = epoch + 1  # increment for readability
+        if iteration is not None:
+            package['iteration'] = iteration
+        if loss_results is not None:
+            package['loss_results'] = loss_results
+            package['cer_results'] = cer_results
+            package['wer_results'] = wer_results
+        if meta is not None:
+            package['meta'] = meta
+        return package
