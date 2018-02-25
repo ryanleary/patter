@@ -7,6 +7,7 @@ from .config import TrainerConfiguration
 from .decoder import GreedyCTCDecoder
 from .data import BucketingSampler, audio_seq_collate_fn
 from .util import AverageMeter
+from .models import SpeechModel
 
 
 class Trainer(object):
@@ -58,7 +59,7 @@ class Trainer(object):
             if avg_wer < best_wer:
                 best_wer = avg_wer
                 print("Better model found. Saving.")
-                # model.serialize(self.output['model_path'])
+                torch.save(SpeechModel.serialize(model, optimizer=optimizer), self.output['model_path'])
 
     def train_epoch(self, train_loader, model, optimizer, epoch):
         batch_time = AverageMeter()
