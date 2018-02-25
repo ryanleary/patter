@@ -11,6 +11,20 @@ from .util import AverageMeter
 from .models import SpeechModel
 
 
+optimizers = {
+    "sgd": torch.optim.SGD,
+    "adam": torch.optim.Adam
+}
+
+
+class NoOpScheduler(object):
+    def __init__(self):
+        pass
+
+    def step(self):
+        pass
+
+
 class Trainer(object):
     def __init__(self, train_config, tqdm=False):
         self.cfg = train_config['trainer']
@@ -38,14 +52,24 @@ class Trainer(object):
 
         # set up optimizer
         opt_cfg = self.cfg['optimizer']
-        optimizer = torch.optim.SGD(model.parameters(), lr=opt_cfg['learning_rate'],
-                                    momentum=opt_cfg['momentum'], nesterov=opt_cfg['use_nesterov'])
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=opt_cfg['lr_annealing'])
+        optim_class = optimizers.get(opt_cfg['optimizer'])
+        del opt_cfg['optimizer']
+        optimizer = optim_class(model.parameters(), **opt_cfg)
+
+        # set up a learning rate scheduler if requested -- currently only StepLR supported
+        if "scheduler" in self.cfg:
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=self.cfg['scheduler']['lr_annealing'])
+        else:
+            scheduler = NoOpScheduler()
 
         # primary training loop
         best_wer = math.inf
 
         for epoch in range(self.cfg['epochs']):
+            # shuffle the input data if required
+            if epoch > 0:
+                train_sampler.shuffle()
+
             # adjust lr
             scheduler.step()
             # print("> Learning rate annealed to {0:.6f}".format(scheduler.get_lr()[0]))
