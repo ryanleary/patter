@@ -78,14 +78,24 @@ class AudioDataset(Dataset):
         transcript = self.parse_transcript(sample['text_filepath'])
         return features, transcript
 
+    def __len__(self):
+        return len(self.manifest)
+
+    def get_largest_minibatch(self, minibatch_size):
+        longest_sample = self[-1][0] + 20 # +20 gives some wiggle room
+        freq_size = longest_sample.size(0)
+        max_seqlength = longest_sample.size(1)
+        targets = torch.IntTensor(max_seqlength*minibatch_size)
+        feats = torch.zeros(minibatch_size, 1, freq_size, max_seqlength)
+        input_lengths = torch.IntTensor(minibatch_size)
+        input_lengths.fill_(max_seqlength)
+        return feats, targets, input_lengths, input_lengths
+
     def parse_transcript(self, transcript_path):
         with open(transcript_path, 'r', encoding="utf-8") as transcript_file:
             transcript = transcript_file.read().replace('\n', '')
         transcript = list(filter(None, [self.labels_map.get(x) for x in list(transcript)]))
         return transcript
-
-    def __len__(self):
-        return len(self.manifest)
 
     @classmethod
     def from_config(cls, corpus_config, feature_config, labels, manifest="train"):

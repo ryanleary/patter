@@ -28,6 +28,8 @@ class DeepSpeechOptim(SpeechModel):
         super().train(mode=mode)
 
     def loss(self, x, y, x_length=None, y_length=None):
+        if self.loss_func is None:
+            self.train()
         return self.loss_func(x, y, x_length, y_length)
 
     def __init__(self, cfg):

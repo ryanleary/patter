@@ -10,7 +10,6 @@ from .data import BucketingSampler, audio_seq_collate_fn
 from .util import AverageMeter
 from .models import SpeechModel
 
-
 optimizers = {
     "sgd": torch.optim.SGD,
     "adam": torch.optim.Adam
@@ -34,6 +33,22 @@ class Trainer(object):
         self.tqdm=tqdm
         self.max_norm = self.cfg.get('max_norm', None)
 
+    def warmup(self, model, corpus, optimizer, batch_size):
+        # warm up with the largest sized minibatch
+        data = corpus.get_largest_minibatch(batch_size)
+        feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, requires_grad=False) for i in data)
+        if self.cuda:
+            feat = feat.cuda(async=True)
+        output, output_len = model(feat, feat_len)
+        loss = model.loss(output, target, output_len, target_len)
+        loss.backward()
+        optimizer.zero_grad()
+        optimizer.step()
+        del feat
+        del loss
+        del output
+        del output_len
+
     def train(self, model, corpus, eval=None):
         # set up data loaders
         train_sampler = BucketingSampler(corpus, batch_size=self.cfg['batch_size'])
@@ -55,6 +70,12 @@ class Trainer(object):
         optim_class = optimizers.get(opt_cfg['optimizer'])
         del opt_cfg['optimizer']
         optimizer = optim_class(model.parameters(), **opt_cfg)
+
+        # warm up gpu memory cache by doing a fwd/bwd, validation, and resetting model
+        print("Starting warmup...")
+        self.warmup(model, corpus, optimizer, self.cfg['batch_size'])
+        avg_wer, avg_cer = validate(eval_loader, model)
+        print("Warmup complete.")
 
         # set up a learning rate scheduler if requested -- currently only StepLR supported
         if "scheduler" in self.cfg:
@@ -106,7 +127,7 @@ class Trainer(object):
             # create variables
             feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, requires_grad=False) for i in data)
             if self.cuda:
-                feat = feat.cuda()
+                feat = feat.cuda(async=True)
 
             # compute output
             # feat is (batch, 1,  feat_dim,  seq_len)
