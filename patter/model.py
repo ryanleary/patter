@@ -1,3 +1,4 @@
+import torch
 from marshmallow.exceptions import ValidationError
 from .models.deepspeech import DeepSpeechOptim
 from .config import SpeechModelConfiguration
@@ -19,3 +20,14 @@ class ModelFactory(object):
             print(err.messages)
             raise err
         return klass(cfg.data)
+
+    @classmethod
+    def load(cls, path):
+        package = torch.load(path, map_location=lambda storage, loc: storage)
+        cfg = package['config']
+
+        model = cls.create(cfg)
+        model.load_state_dict(package['state_dict'])
+        model.flatten_parameters()
+
+        return model

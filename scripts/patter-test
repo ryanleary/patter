@@ -8,7 +8,6 @@ from patter.data import AudioDataset
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Patter STT Test")
-    parser.add_argument("--corpus-config", required=True, help="Configuration file specifying corpus")
     parser.add_argument("--test-config", required=True, help="Configuration file specifying testing parameters")
     parser.add_argument("--progress", action="store_true", help="If true, display progress bars, else use text output")
     parser.add_argument("--model-path", required=True, help="Begin training with this model")
@@ -19,9 +18,7 @@ def get_parser():
 def main():
     args = get_parser().parse_args()
 
-    # load configurations
-    with open(args.corpus_config, "r") as fh:
-        corpus_config = toml.load(fh)
+    # load configuration
     with open(args.testing_config, "r") as fh:
         testing_config = toml.load(fh)
 
@@ -32,10 +29,13 @@ def main():
     eval = Evaluator.load(testing_config, tqdm=args.progress)
 
     # load the corpora
-    test_corpus = AudioDataset.from_config(corpus_config, model.input_cfg, model.labels, manifest="test")
+    test_corpus = AudioDataset.from_config(testing_config, model.input_cfg, model.labels, manifest="test")
 
     # kick off the test
-    eval.eval(model, test_corpus)
+    wer, cer = eval.eval(model, test_corpus)
+    print('Test Summary \t'
+          'Average WER {wer:.3f}\t'
+          'Average CER {cer:.3f}\t'.format(wer=wer * 100, cer=cer * 100))
 
 if __name__ == '__main__':
     main()

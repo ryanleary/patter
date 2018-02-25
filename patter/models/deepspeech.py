@@ -55,6 +55,9 @@ class DeepSpeechOptim(SpeechModel):
         self.output = nn.Sequential(*output)
         self.inference_softmax = InferenceBatchSoftmax()
 
+    def flatten_parameters(self):
+        self.rnns.flatten_parameters()
+
     def get_seq_lens(self, input_length):
         """
         Given a 1D Tensor or Variable containing integer sequence lengths, return a 1D tensor or variable
