@@ -1,6 +1,7 @@
 import math
 import time
 import torch
+from tqdm import tqdm as tqdm_wrap
 from torch.utils.data import DataLoader
 from marshmallow.exceptions import ValidationError
 from .config import TrainerConfiguration
@@ -47,29 +48,34 @@ class Trainer(object):
         for epoch in range(self.cfg['epochs']):
             # adjust lr
             scheduler.step()
-            print("Learning rate annealed to {0:.6f}".format(scheduler.get_lr()[0]))
-
+            # print("> Learning rate annealed to {0:.6f}".format(scheduler.get_lr()[0]))
+            
             avg_loss = self.train_epoch(train_loader, model, optimizer, epoch)
-            print('Training Summary Epoch: [{0}]\tAverage Loss {loss:.3f}\t'.format(epoch + 1, loss=avg_loss))
+            print("Epoch {} Summary:".format(epoch + 1))
+            print('    Train:\tAverage Loss {loss:.3f}\t'.format(loss=avg_loss))
 
             avg_wer, avg_cer = validate(eval_loader, model)
-            print('Validation Summary Epoch: [{0}]\tAverage WER {wer:.3f}\tAverage CER {cer:.3f}'
-                  .format(epoch + 1, wer=avg_wer, cer=avg_cer))
+            print('    Validation:\tAverage WER {wer:.3f}\tAverage CER {cer:.3f}'
+                  .format(wer=avg_wer, cer=avg_cer))
 
             if avg_wer < best_wer:
                 best_wer = avg_wer
-                print("Better model found. Saving.")
+                # print("Better model found. Saving.")
                 torch.save(SpeechModel.serialize(model, optimizer=optimizer), self.output['model_path'])
 
     def train_epoch(self, train_loader, model, optimizer, epoch):
+        model.train()
+
         batch_time = AverageMeter()
         data_time = AverageMeter()
         losses = AverageMeter()
 
-        model.train()
+        loader = train_loader
+        if self.tqdm:
+            loader = tqdm_wrap(loader, desc="Epoch {}".format(epoch), leave=False)
 
         end = time.time()
-        for i, data in enumerate(train_loader):
+        for i, data in enumerate(loader):
             # measure data loading time
             data_time.update(time.time() - end)
 
@@ -107,12 +113,15 @@ class Trainer(object):
             batch_time.update(time.time() - end)
             end = time.time()
 
-            print('Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format((epoch + 1), (i + 1), len(train_loader),
-                                                                  batch_time=batch_time, data_time=data_time,
-                                                                  loss=losses))
+            if not self.tqdm:
+                print('Epoch: [{0}][{1}/{2}]\t'
+                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                      'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format((epoch + 1), (i + 1), len(train_loader),
+                                                                      batch_time=batch_time, data_time=data_time,
+                                                                      loss=losses))
+            else:
+                loader.set_postfix(loss=losses.val)
         return losses.avg
 
     @classmethod
@@ -134,16 +143,18 @@ def split_targets(targets, target_sizes):
     return results
 
 
-def validate(val_loader, model, decoder=None):
+def validate(val_loader, model, decoder=None, tqdm=True):
     if decoder is None:
         decoder = GreedyCTCDecoder(model.labels)
     batch_time = AverageMeter()
 
     model.eval()
 
+    loader = tqdm_wrap(val_loader, desc="Validate", leave=False) if tqdm else val_loader
+
     end = time.time()
     wer, cer = 0.0, 0.0
-    for i, data in enumerate(val_loader):
+    for i, data in enumerate(loader):
         # create variables
         feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, volatile=True) for i in data)
         if model.is_cuda:
