@@ -82,7 +82,7 @@ class AudioDataset(Dataset):
         return len(self.manifest)
 
     def get_largest_minibatch(self, minibatch_size):
-        longest_sample = self[-1][0] + 20 # +20 gives some wiggle room
+        longest_sample = self.featurizer.max_augmentation_length(self[-1][0] + 20) # +20 gives some wiggle room
         freq_size = longest_sample.size(0)
         max_seqlength = longest_sample.size(1)
         targets = torch.IntTensor(max_seqlength*minibatch_size)

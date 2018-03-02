@@ -18,6 +18,9 @@ class PerturbedSpectrogramFeaturizer(object):
         self.cfg = input_cfg
         self.window = windows.get(self.cfg['window'], windows['hamming'])
 
+    def max_augmentation_length(self, length):
+        return self.augmentor.max_augmentation_length(length)
+
     def process(self, file_path):
         audio = AudioSegment.from_file(file_path, target_sr=self.cfg['sample_rate'])
         self.augmentor.perturb(audio)

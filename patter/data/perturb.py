@@ -6,6 +6,9 @@ from .segment import AudioSegment
 
 
 class Perturbation(object):
+    def max_augmentation_length(self, length):
+        return length
+
     def perturb(self, data):
         raise NotImplementedError
 
@@ -15,6 +18,9 @@ class SpeedPerturbation(Perturbation):
         self._min_rate = min_speed_rate
         self._max_rate = max_speed_rate
         self._rng = random.Random() if rng is None else rng
+
+    def max_augmentation_length(self, length):
+        return length * self._max_rate
 
     def perturb(self, data):
         speed_rate = self._rng.uniform(self._min_rate, self._max_rate)
@@ -112,6 +118,12 @@ class AudioAugmentor(object):
             if self._rng.random() < prob:
                 p.perturb(segment)
         return
+
+    def max_augmentation_length(self, length):
+        newlen = length
+        for (prob, p) in self._pipeline:
+            newlen = p.max_augmentation_length(newlen)
+        return newlen
 
     @classmethod
     def from_config(cls, config):
