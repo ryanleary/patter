@@ -1,5 +1,6 @@
 import math
 import torch.nn as nn
+import torchvision.utils as vutils
 
 from warpctc_pytorch import CTCLoss
 from patter.models.model import SpeechModel
@@ -138,4 +139,19 @@ class DeepSpeechOptim(SpeechModel):
 
         # if training, return only logits (ctc loss calculates softmax), otherwise do softmax
         x = self.inference_softmax(x, dim=2)
+        del lengths, sizes
         return x, output_lengths
+
+    def get_filter_images(self):
+        images = []
+        x = 0
+        for mod in self.conv:
+            if type(mod) == nn.modules.conv.Conv2d:
+                orig_shape = mod.weight.data.shape
+                weights = mod.weight.data.view(
+                    [orig_shape[0] * orig_shape[1], orig_shape[2], orig_shape[3]]).unsqueeze(1)
+                rows = 2**math.ceil(math.sqrt(math.sqrt(weights.shape[0])))
+                images.append(("CNN.{}".format(x),
+                               vutils.make_grid(weights , nrow=rows, padding=1, normalize=True, scale_each=True)))
+            x += 1
+        return images

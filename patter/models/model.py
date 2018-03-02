@@ -20,6 +20,9 @@ class SpeechModel(nn.Module):
     def config(self) -> dict:
         return self._config
 
+    def get_filter_images(self):
+        return []
+
     @staticmethod
     def serialize(model, optimizer=None, epoch=None, iteration=None, loss_results=None,
                   cer_results=None, wer_results=None, avg_loss=None, meta=None):

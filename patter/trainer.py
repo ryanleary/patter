@@ -7,7 +7,7 @@ from marshmallow.exceptions import ValidationError
 from .config import TrainerConfiguration
 from .decoder import GreedyCTCDecoder
 from .data import BucketingSampler, audio_seq_collate_fn
-from .util import AverageMeter
+from .util import AverageMeter, TensorboardLogger
 from .models import SpeechModel
 
 optimizers = {
@@ -32,6 +32,7 @@ class Trainer(object):
         self.train_id = train_config['expt_id']
         self.tqdm=tqdm
         self.max_norm = self.cfg.get('max_norm', None)
+        self.logger = TensorboardLogger(train_config['expt_id'], self.output['log_path'])
 
     def warmup(self, model, corpus, optimizer, batch_size):
         # warm up with the largest sized minibatch
@@ -39,6 +40,7 @@ class Trainer(object):
         feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, requires_grad=False) for i in data)
         if self.cuda:
             feat = feat.cuda(async=True)
+        # self.logger.add_graph(model, (feat, feat_len))
         output, output_len = model(feat, feat_len)
         loss = model.loss(output, target, output_len, target_len)
         loss.backward()
@@ -75,6 +77,7 @@ class Trainer(object):
         print("Starting warmup...")
         self.warmup(model, corpus, optimizer, self.cfg['batch_size'])
         avg_wer, avg_cer = validate(eval_loader, model)
+        self.logger.log_epoch(0, 500, avg_wer, avg_cer)
         print("Warmup complete.")
 
         # set up a learning rate scheduler if requested -- currently only StepLR supported
@@ -99,9 +102,14 @@ class Trainer(object):
             print("Epoch {} Summary:".format(epoch))
             print('    Train:\tAverage Loss {loss:.3f}\t'.format(loss=avg_loss))
 
-            avg_wer, avg_cer = validate(eval_loader, model)
+            avg_wer, avg_cer, sample_decodes = validate(eval_loader, model, log_n_examples=10)
             print('    Validation:\tAverage WER {wer:.3f}\tAverage CER {cer:.3f}'
                   .format(wer=avg_wer, cer=avg_cer))
+
+            # log the result of the epoch
+            self.logger.log_epoch(epoch+1, avg_loss, avg_wer, avg_cer, model=model)
+            self.logger.log_images(epoch+1, model.get_filter_images())
+            self.logger.log_sample_decodes(epoch+1, sample_decodes)
 
             if avg_wer < best_wer:
                 best_wer = avg_wer
@@ -141,6 +149,7 @@ class Trainer(object):
             if avg_loss == inf or avg_loss == -inf:
                 print("WARNING: received an inf loss, setting loss value to 0")
                 avg_loss = 0
+            self.logger.log_step(epoch*len(train_loader) + i, avg_loss)
             losses.update(avg_loss, feat.size(0))
 
             # compute gradient
@@ -150,6 +159,8 @@ class Trainer(object):
                 torch.nn.utils.clip_grad_norm(model.parameters(), self.max_norm)
             optimizer.step()
 
+            del feat
+            del avg_loss
             del loss
             del output
             del output_len
@@ -188,7 +199,7 @@ def split_targets(targets, target_sizes):
     return results
 
 
-def validate(val_loader, model, decoder=None, tqdm=True):
+def validate(val_loader, model, decoder=None, tqdm=True, log_n_examples=0):
     if decoder is None:
         decoder = GreedyCTCDecoder(model.labels)
     batch_time = AverageMeter()
@@ -199,6 +210,8 @@ def validate(val_loader, model, decoder=None, tqdm=True):
 
     end = time.time()
     wer, cer = 0.0, 0.0
+    decodes = []
+    refs = []
     for i, data in enumerate(loader):
         # create variables
         feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, volatile=True) for i in data)
@@ -211,6 +224,11 @@ def validate(val_loader, model, decoder=None, tqdm=True):
         # do the decode
         decoded_output, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)
         target_strings = decoder.convert_to_strings(split_targets(target.data, target_len.data))
+
+        if len(decodes) < log_n_examples:
+            decodes.append(decoded_output[0][0])
+            refs.append(target_strings[0][0])
+
         for x in range(len(target_strings)):
             transcript, reference = decoded_output[x][0], target_strings[x][0]
             wer += decoder.wer(transcript, reference) / float(len(reference.split()))
@@ -225,4 +243,6 @@ def validate(val_loader, model, decoder=None, tqdm=True):
     wer = wer * 100 / len(val_loader.dataset)
     cer = cer * 100 / len(val_loader.dataset)
 
+    if log_n_examples > 0:
+        return wer, cer, list(zip(decodes, refs))
     return wer, cer
