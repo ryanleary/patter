@@ -2,11 +2,15 @@ import math
 import torch.nn as nn
 import torchvision.utils as vutils
 
-from warpctc_pytorch import CTCLoss
 from patter.models.model import SpeechModel
-from .layer import NoiseRNN, LookaheadConvolution
+from patter.layers import NoiseRNN, DeepBatchRNN, LookaheadConvolution
 from .activation import InferenceBatchSoftmax, Swish
 
+try:
+    from warpctc_pytorch import CTCLoss
+except ImportError:
+    print("WARN: CTCLoss not imported. Use only for inference.")
+    CTCLoss = lambda x, y: 0
 
 activations = {
     "hardtanh": nn.Hardtanh,
@@ -43,17 +47,18 @@ class DeepSpeechOptim(SpeechModel):
         self.labels = ['\0'] + cfg['labels']['labels']
 
         rnn_input_size = self._get_rnn_input_size(cfg['input']['sample_rate'], cfg['input']['window_size'])
-        self.rnns = NoiseRNN(input_size=rnn_input_size, hidden_size=cfg['rnn']['size'],
-                             bidirectional=cfg['rnn']['bidirectional'], num_layers=cfg['rnn']['layers'],
-                             rnn_type=supported_rnns[cfg['rnn']['rnn_type']],
-                             weight_noise=cfg['rnn']['noise'])
+        rnn_class = DeepBatchRNN if cfg['rnn']['batch_norm'] else NoiseRNN
+        self.rnns = rnn_class(input_size=rnn_input_size, hidden_size=cfg['rnn']['size'],
+                              bidirectional=cfg['rnn']['bidirectional'], num_layers=cfg['rnn']['layers'],
+                              rnn_type=supported_rnns[cfg['rnn']['rnn_type']],
+                              weight_noise=cfg['rnn']['noise'], batch_norm=cfg['rnn']['batch_norm'])
 
         # generate the optional lookahead layer and fully-connected layer
         output = []
         if not cfg['rnn']['bidirectional']:
             output.append(LookaheadConvolution(cfg['rnn']['size'], context=cfg['ctx']['context']))
             output.append(activations[cfg['ctx']['activation']](*cfg['ctx']['activation_params']))
-        output.append(nn.Linear(cfg['rnn']['size'], len(self.labels)))
+        output.append(nn.Linear(cfg['rnn']['size'], len(self.labels), bias=False))
 
         self.output = nn.Sequential(*output)
         self.inference_softmax = InferenceBatchSoftmax()
@@ -85,7 +90,7 @@ class DeepSpeechOptim(SpeechModel):
         """
         cnns = []
         for x, cnn_cfg in enumerate(cfg):
-            in_filters = cfg[x-1]['filters'] if x > 0 else 1
+            in_filters = cfg[x - 1]['filters'] if x > 0 else 1
             cnn = nn.Conv2d(in_filters, cnn_cfg['filters'],
                             kernel_size=tuple(cnn_cfg['kernel']),
                             stride=tuple(cnn_cfg['stride']),
@@ -150,8 +155,8 @@ class DeepSpeechOptim(SpeechModel):
                 orig_shape = mod.weight.data.shape
                 weights = mod.weight.data.view(
                     [orig_shape[0] * orig_shape[1], orig_shape[2], orig_shape[3]]).unsqueeze(1)
-                rows = 2**math.ceil(math.sqrt(math.sqrt(weights.shape[0])))
+                rows = 2 ** math.ceil(math.sqrt(math.sqrt(weights.shape[0])))
                 images.append(("CNN.{}".format(x),
-                               vutils.make_grid(weights , nrow=rows, padding=1, normalize=True, scale_each=True)))
+                               vutils.make_grid(weights, nrow=rows, padding=1, normalize=True, scale_each=True)))
             x += 1
         return images

@@ -42,29 +42,22 @@ class TensorboardLogger(object):
         self._writer.add_graph(model, dummy_input)
 
     def log_sample_decodes(self, epoch, sample_decodes):
-        table = defaultdict(list)
-        table[0].append("*")
-        table[1].append("-")
-        table[2].append("Hyp")
-        table[3].append("Ref")
+        rows = ["*|Hyp|Ref", "-|-|-"]
         for x in range(len(sample_decodes)):
-            table[0].append("Ex. {}".format(x))
-            table[1].append("-")
-            table[2].append(sample_decodes[x][0])
-            table[3].append(sample_decodes[x][1])
-
-        final_table = "\n".join(["|".join(table[0]), "|".join(table[1]), "|".join(table[2]), "|".join(table[3])])
+            rows.append("|".join(["Ex. {}".format(x), sample_decodes[x][0], sample_decodes[x][1]]))
+        final_table = "\n".join(rows)
         self._writer.add_text("Validation Decode", final_table, epoch)
 
-    def log_epoch(self, epoch, loss, wer, cer, model=None):
+    def log_epoch(self, epoch, loss, wer, cer, val_loss, model=None):
         self._writer.add_scalar("loss/train", loss, epoch)
+        self._writer.add_scalar("loss/val", val_loss, epoch)
         self._writer.add_scalar("accuracy/wer", wer, epoch)
         self._writer.add_scalar("accuracy/cer", cer, epoch)
 
         if model:
             for tag, value in model.named_parameters():
                 tag = tag.replace('.', '/')
-                self._writer.add_histogram(tag, to_np(value), epoch + 1)
+                self._writer.add_histogram(tag, to_np(value), epoch + 1, bins='doane')
                 if self._include_grad:
                     self._writer.add_histogram(tag + '/grad', to_np(value.grad), epoch + 1)
 

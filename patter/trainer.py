@@ -72,6 +72,14 @@ class Trainer(object):
         optim_class = optimizers.get(opt_cfg['optimizer'])
         del opt_cfg['optimizer']
         optimizer = optim_class(model.parameters(), **opt_cfg)
+        print("Configured with optimizer:", optimizer)
+
+        # set up a learning rate scheduler if requested -- currently only StepLR supported
+        if "scheduler" in self.cfg:
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=self.cfg['scheduler']['lr_annealing'])
+            print("Configured with learning rate scheduler:", scheduler)
+        else:
+            scheduler = NoOpScheduler()
 
         # warm up gpu memory cache by doing a fwd/bwd, validation, and resetting model
         print("Starting warmup...")
@@ -79,12 +87,6 @@ class Trainer(object):
         avg_wer, avg_cer = validate(eval_loader, model)
         self.logger.log_epoch(0, 500, avg_wer, avg_cer)
         print("Warmup complete.")
-
-        # set up a learning rate scheduler if requested -- currently only StepLR supported
-        if "scheduler" in self.cfg:
-            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=self.cfg['scheduler']['lr_annealing'])
-        else:
-            scheduler = NoOpScheduler()
 
         # primary training loop
         best_wer = math.inf
@@ -102,12 +104,12 @@ class Trainer(object):
             print("Epoch {} Summary:".format(epoch))
             print('    Train:\tAverage Loss {loss:.3f}\t'.format(loss=avg_loss))
 
-            avg_wer, avg_cer, sample_decodes = validate(eval_loader, model, log_n_examples=10)
+            avg_wer, avg_cer, val_loss, sample_decodes = validate(eval_loader, model, training=True, log_n_examples=10)
             print('    Validation:\tAverage WER {wer:.3f}\tAverage CER {cer:.3f}'
                   .format(wer=avg_wer, cer=avg_cer))
 
             # log the result of the epoch
-            self.logger.log_epoch(epoch+1, avg_loss, avg_wer, avg_cer, model=model)
+            self.logger.log_epoch(epoch+1, avg_loss, avg_wer, avg_cer, val_loss, model=model)
             self.logger.log_images(epoch+1, model.get_filter_images())
             self.logger.log_sample_decodes(epoch+1, sample_decodes)
 
@@ -125,7 +127,7 @@ class Trainer(object):
 
         loader = train_loader
         if self.tqdm:
-            loader = tqdm_wrap(loader, desc="Epoch {}".format(epoch), leave=False)
+            loader = tqdm_wrap(loader, desc="Epoch {}".format(epoch+1), leave=False)
 
         end = time.time()
         for i, data in enumerate(loader):
@@ -199,7 +201,7 @@ def split_targets(targets, target_sizes):
     return results
 
 
-def validate(val_loader, model, decoder=None, tqdm=True, log_n_examples=0):
+def validate(val_loader, model, decoder=None, tqdm=True, training=True, log_n_examples=0):
     if decoder is None:
         decoder = GreedyCTCDecoder(model.labels)
     batch_time = AverageMeter()
@@ -209,7 +211,7 @@ def validate(val_loader, model, decoder=None, tqdm=True, log_n_examples=0):
     loader = tqdm_wrap(val_loader, desc="Validate", leave=False) if tqdm else val_loader
 
     end = time.time()
-    wer, cer = 0.0, 0.0
+    wer, cer, loss = 0.0, 0.0, 0.0
     decodes = []
     refs = []
     for i, data in enumerate(loader):
@@ -220,6 +222,16 @@ def validate(val_loader, model, decoder=None, tqdm=True, log_n_examples=0):
 
         # compute output
         output, output_len = model(feat, feat_len)
+
+        if training:
+            mb_loss = model.loss(output, target, output_len, target_len)
+            avg_loss = mb_loss.data.sum() / feat.size(0)  # average the loss by minibatch
+            inf = math.inf
+            if avg_loss == inf or avg_loss == -inf:
+                print("WARNING: received an inf loss, setting loss value to 0")
+                avg_loss = 0
+            loss += avg_loss
+
 
         # do the decode
         decoded_output, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)
@@ -243,6 +255,6 @@ def validate(val_loader, model, decoder=None, tqdm=True, log_n_examples=0):
     wer = wer * 100 / len(val_loader.dataset)
     cer = cer * 100 / len(val_loader.dataset)
 
-    if log_n_examples > 0:
-        return wer, cer, list(zip(decodes, refs))
+    if training > 0:
+        return wer, cer, loss, list(zip(decodes, refs))
     return wer, cer

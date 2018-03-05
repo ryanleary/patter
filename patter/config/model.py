@@ -17,6 +17,7 @@ class RNNConfiguration(Schema):
     size = fields.Integer(default=512)
     layers = fields.Integer(default=4)
     noise = fields.Nested(NormalDistributionConfiguration, default=None, missing=None)
+    batch_norm = fields.Boolean(default=False, missing=False)
 
 
 class CNNConfiguration(Schema):
