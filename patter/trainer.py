@@ -85,7 +85,7 @@ class Trainer(object):
         print("Starting warmup...")
         self.warmup(model, corpus, optimizer, self.cfg['batch_size'])
         avg_wer, avg_cer = validate(eval_loader, model)
-        self.logger.log_epoch(0, 500, avg_wer, avg_cer)
+        self.logger.log_epoch(0, 500, avg_wer, avg_cer, 500)
         print("Warmup complete.")
 
         # primary training loop
@@ -201,17 +201,18 @@ def split_targets(targets, target_sizes):
     return results
 
 
-def validate(val_loader, model, decoder=None, tqdm=True, training=True, log_n_examples=0):
+def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_examples=0):
     if decoder is None:
         decoder = GreedyCTCDecoder(model.labels)
     batch_time = AverageMeter()
+    losses = AverageMeter()
 
     model.eval()
 
     loader = tqdm_wrap(val_loader, desc="Validate", leave=False) if tqdm else val_loader
 
     end = time.time()
-    wer, cer, loss = 0.0, 0.0, 0.0
+    wer, cer = 0.0, 0.0
     decodes = []
     refs = []
     for i, data in enumerate(loader):
@@ -230,8 +231,7 @@ def validate(val_loader, model, decoder=None, tqdm=True, training=True, log_n_ex
             if avg_loss == inf or avg_loss == -inf:
                 print("WARNING: received an inf loss, setting loss value to 0")
                 avg_loss = 0
-            loss += avg_loss
-
+            losses.update(avg_loss, feat.size(0))
 
         # do the decode
         decoded_output, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)
@@ -255,6 +255,6 @@ def validate(val_loader, model, decoder=None, tqdm=True, training=True, log_n_ex
     wer = wer * 100 / len(val_loader.dataset)
     cer = cer * 100 / len(val_loader.dataset)
 
-    if training > 0:
-        return wer, cer, loss, list(zip(decodes, refs))
+    if training:
+        return wer, cer, losses.avg, list(zip(decodes, refs))
     return wer, cer
