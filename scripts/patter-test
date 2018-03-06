@@ -11,6 +11,7 @@ def get_parser():
     parser.add_argument("model_path", help="Path to model to test")
     parser.add_argument("--test-config", required=True, help="Configuration file specifying testing parameters")
     parser.add_argument("--progress", action="store_true", help="If true, display progress bars, else use text output")
+    parser.add_argument("--verbose", action="store_true", help="If true, display reference and hypothesized transcripts")
 
     return parser
 
@@ -26,7 +27,7 @@ def main():
     model = ModelFactory.load(args.model_path)
 
     # set up trainer and corpus
-    evaluator = Evaluator.load(testing_config, tqdm=args.progress)
+    evaluator = Evaluator.load(testing_config, tqdm=args.progress, verbose=args.verbose)
 
     # load the corpora
     test_corpus = AudioDataset.from_config(testing_config, model.input_cfg, model.labels, manifest="test")

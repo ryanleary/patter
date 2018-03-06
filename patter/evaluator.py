@@ -12,10 +12,11 @@ from patter.util import AverageMeter, split_targets
 
 
 class Evaluator(object):
-    def __init__(self, cfg, tqdm=False):
+    def __init__(self, cfg, tqdm=False, verbose=False):
         self.cfg = cfg
         self.cuda = cfg['cuda']
-        self.tqdm=tqdm
+        self.tqdm = tqdm
+        self.verbose = verbose
 
     def eval(self, model, corpus):
         test_loader = DataLoader(corpus, num_workers=self.cfg['num_workers'], collate_fn=audio_seq_collate_fn,
@@ -24,20 +25,20 @@ class Evaluator(object):
         if self.cuda:
             model = model.cuda()
 
-        wer, cer = validate(test_loader, model, decoder=None, tqdm=self.tqdm)
+        wer, cer = validate(test_loader, model, decoder=None, tqdm=self.tqdm, verbose=self.verbose)
         return wer, cer
 
     @classmethod
-    def load(cls, evaluator_config, tqdm=False):
+    def load(cls, evaluator_config, tqdm=False, verbose=False):
         try:
             cfg = EvaluatorConfiguration().load(evaluator_config)
         except ValidationError as err:
             print(err.messages)
             raise err
-        return cls(cfg.data, tqdm=tqdm)
+        return cls(cfg.data, tqdm=tqdm, verbose=verbose)
 
 
-def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_examples=0):
+def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_examples=0, verbose=False):
     if decoder is None:
         decoder = GreedyCTCDecoder(model.labels)
     batch_time = AverageMeter()
@@ -79,8 +80,14 @@ def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_e
 
         for x in range(len(target_strings)):
             transcript, reference = decoded_output[x][0], target_strings[x][0]
-            wer += decoder.wer(transcript, reference) / float(len(reference.split()))
-            cer += decoder.cer(transcript, reference) / float(len(reference))
+            wer_inst = decoder.wer(transcript, reference) / float(len(reference.split()))
+            cer_inst = decoder.cer(transcript, reference) / float(len(reference))
+            wer += wer_inst
+            cer += cer_inst
+            if verbose:
+                print("Ref:", reference.lower())
+                print("Hyp:", transcript.lower())
+                print("WER:", wer_inst, "CER:", cer_inst, "\n")
 
         del output
         del output_len

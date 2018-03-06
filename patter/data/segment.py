@@ -70,7 +70,7 @@ class AudioSegment(object):
         """
         samples, sample_rate = sf.read(filename)
         if int_values:
-            samples = (samples * (1 << 31)).as_type(int)
+            samples *= (1 << 31)
         samples = samples.transpose()
         if target_sr is not None and target_sr != sample_rate:
             samples = librosa.core.resample(samples, sample_rate, target_sr)
