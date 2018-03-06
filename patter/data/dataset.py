@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from .manifest import Manifest
 from .features import PerturbedSpectrogramFeaturizer
-from patter.config.corpora import CorporaConfiguration
+from patter.config import CorporaConfiguration
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
 from marshmallow.exceptions import ValidationError
@@ -113,5 +113,5 @@ class AudioDataset(Dataset):
         featurizer = PerturbedSpectrogramFeaturizer.from_config(feature_config,
                                                                 perturbation_configs=augmentation_config)
 
-        return cls(dataset['manifest'], labels, featurizer, max_duration=config['cfg']['max_duration'],
-                   min_duration=config['cfg']['min_duration'])
+        return cls(dataset['manifest'], labels, featurizer, max_duration=config['max_duration'],
+                   min_duration=config['min_duration'])

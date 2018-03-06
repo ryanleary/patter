@@ -1,6 +1,8 @@
 from marshmallow import Schema, fields
 from marshmallow.validate import Range
 
+from .dataset import DatasetConfig
+
 
 class AugmentationConfig(Schema):
     manifest_path = fields.String(load_from="manifest")
@@ -21,18 +23,8 @@ class AugmentationSpec(Schema):
     cfg = fields.Nested(AugmentationConfig, load_from="config")
 
 
-class CorporaConfig(Schema):
+class CorporaConfiguration(Schema):
     min_duration = fields.Float(missing=None)
     max_duration = fields.Float(missing=None)
-
-
-class DatasetConfig(Schema):
-    manifest = fields.String(required=True)
-    name = fields.String(required=True)
-    augment = fields.Boolean(required=False, default=False, missing=False)
-
-
-class CorporaConfiguration(Schema):
     datasets = fields.Nested(DatasetConfig, load_from="dataset", many=True)
-    cfg = fields.Nested(CorporaConfig, load_from="config")
     augmentation = fields.Nested(AugmentationSpec, many=True, missing=[])

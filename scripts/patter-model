@@ -21,7 +21,6 @@ def main():
 
     # print model structure and metadata
     print(model)
-    print(model.config)
 
 
 if __name__ == '__main__':
