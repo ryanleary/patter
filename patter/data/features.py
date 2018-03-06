@@ -22,7 +22,7 @@ class PerturbedSpectrogramFeaturizer(object):
         return self.augmentor.max_augmentation_length(length)
 
     def process(self, file_path):
-        audio = AudioSegment.from_file(file_path, target_sr=self.cfg['sample_rate'])
+        audio = AudioSegment.from_file(file_path, target_sr=self.cfg['sample_rate'], int_values=self.cfg['int_values'])
         self.augmentor.perturb(audio)
 
         n_fft = int(self.cfg['sample_rate'] * self.cfg['window_size'])

@@ -43,6 +43,7 @@ class InputConfiguration(Schema):
     window_size = fields.Float(default=0.02)
     window_stride = fields.Float(default=0.01)
     window = fields.String(default="hamming")
+    int_values = fields.Boolean(default=False, missing=False)
 
 
 class SpeechModelConfiguration(Schema):

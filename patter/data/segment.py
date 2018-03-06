@@ -60,14 +60,17 @@ class AudioSegment(object):
         return float32_samples
 
     @classmethod
-    def from_file(cls, filename, target_sr=None):
+    def from_file(cls, filename, target_sr=None, int_values=False):
         """
         Load a file supported by librosa and return as an AudioSegment.
         :param filename: path of file to load
         :param target_sr: the desired sample rate
+        :param int_values: if true, load samples as 32-bit integers
         :return: numpy array of samples
         """
         samples, sample_rate = sf.read(filename)
+        if int_values:
+            samples = (samples * (1 << 31)).as_type(int)
         samples = samples.transpose()
         if target_sr is not None and target_sr != sample_rate:
             samples = librosa.core.resample(samples, sample_rate, target_sr)

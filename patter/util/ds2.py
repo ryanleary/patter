@@ -42,12 +42,13 @@ def generate_config(package):
             }
         ],
         'input': {
-             'feat_type': 'stft',
-             'normalize': True,
-             'sample_rate': package['audio_conf']['sample_rate'],
-             'window': package['audio_conf']['window'],
-             'window_size': package['audio_conf']['window_size'],
-             'window_stride': package['audio_conf']['window_stride']
+            'feat_type': 'stft',
+            'normalize': True,
+            'int_values': True,
+            'sample_rate': package['audio_conf']['sample_rate'],
+            'window': package['audio_conf']['window'],
+            'window_size': package['audio_conf']['window_size'],
+            'window_stride': package['audio_conf']['window_stride']
         },
         'labels': {
             'labels': list(package['labels'][1:])
