@@ -9,6 +9,7 @@ from patter.config import TrainerConfiguration
 from patter.data import BucketingSampler, audio_seq_collate_fn
 from patter.util import AverageMeter, TensorboardLogger
 from patter.models import SpeechModel
+from patter.evaluator import validate
 
 optimizers = {
     "sgd": torch.optim.SGD,
