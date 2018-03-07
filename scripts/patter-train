@@ -5,6 +5,14 @@ import toml
 from patter import Trainer, ModelFactory
 from patter.data import AudioDataset
 
+import torch
+import numpy
+import random
+
+torch.manual_seed(123456)
+torch.cuda.manual_seed_all(123456)
+numpy.random.seed(seed=123456)
+random.seed(a=1234556)
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Patter STT Trainer")
