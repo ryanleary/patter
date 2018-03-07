@@ -10,7 +10,7 @@ class OptimizerSettings(Schema):
     optimizer = fields.String(required=True)
     lr = fields.Float(required=True)
     momentum = fields.Float(default=0.9)
-    use_nesterov = fields.Boolean(default=True)
+    nesterov = fields.Boolean(default=True)
 
 
 class SchedulerSettings(Schema):
