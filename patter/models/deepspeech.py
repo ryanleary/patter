@@ -2,6 +2,7 @@ import math
 import torch.nn as nn
 import torchvision.utils as vutils
 
+from collections import OrderedDict, defaultdict
 from patter.models.model import SpeechModel
 from patter.layers import NoiseRNN, DeepBatchRNN, LookaheadConvolution
 from .activation import InferenceBatchSoftmax, Swish
@@ -27,31 +28,24 @@ supported_rnns_inv = dict((v, k) for k, v in supported_rnns.items())
 
 
 class DeepSpeechOptim(SpeechModel):
-    def train(self, mode=True):
-        if mode and self.loss_func is None:
-            self.loss_func = CTCLoss()
-        super().train(mode=mode)
-
-    def loss(self, x, y, x_length=None, y_length=None):
-        if self.loss_func is None:
-            self.train()
-        return self.loss_func(x, y, x_length, y_length)
-
     def __init__(self, cfg):
         super(DeepSpeechOptim, self).__init__(cfg)
         self.input_cfg = cfg['input']
-        self.conv = self._get_cnn_layers(cfg['cnn'])
         self.loss_func = None
 
         # Add a `\0` label as a "BLANK" symbol for CTC
         self.labels = ['\0'] + cfg['labels']['labels']
 
+        # create the convolutional input layer(s)
+        self.conv = self._get_cnn_layers(cfg['cnn'])
+
+        # create the RNN(s)
         rnn_input_size = self._get_rnn_input_size(cfg['input']['sample_rate'], cfg['input']['window_size'])
         rnn_class = DeepBatchRNN if cfg['rnn']['batch_norm'] else NoiseRNN
-        self.rnns = rnn_class(input_size=rnn_input_size, hidden_size=cfg['rnn']['size'],
-                              bidirectional=cfg['rnn']['bidirectional'], num_layers=cfg['rnn']['layers'],
-                              rnn_type=supported_rnns[cfg['rnn']['rnn_type']],
-                              weight_noise=cfg['rnn']['noise'], batch_norm=cfg['rnn']['batch_norm'])
+        self.rnn = rnn_class(input_size=rnn_input_size, hidden_size=cfg['rnn']['size'],
+                             bidirectional=cfg['rnn']['bidirectional'], num_layers=cfg['rnn']['layers'],
+                             rnn_type=supported_rnns[cfg['rnn']['rnn_type']],
+                             weight_noise=cfg['rnn']['noise'], batch_norm=cfg['rnn']['batch_norm'])
 
         # generate the optional lookahead layer and fully-connected layer
         output = []
@@ -59,12 +53,63 @@ class DeepSpeechOptim(SpeechModel):
             output.append(LookaheadConvolution(cfg['rnn']['size'], context=cfg['ctx']['context']))
             output.append(activations[cfg['ctx']['activation']](*cfg['ctx']['activation_params']))
         output.append(nn.Linear(cfg['rnn']['size'], len(self.labels), bias=False))
-
         self.output = nn.Sequential(*output)
+
+        # and output activation (softmax) ONLY at inference time (CTC applies softmax during training)
         self.inference_softmax = InferenceBatchSoftmax()
+        self.init_weights()
+
+    def train(self, mode=True):
+        """
+        Enter (or exit) training mode. Initializes loss function if necessary
+        :param mode: if True, set model up for training
+        :return:
+        """
+        if mode and self.loss_func is None:
+            self.loss_func = CTCLoss()
+        super().train(mode=mode)
+
+    def loss(self, x, y, x_length=None, y_length=None):
+        """
+        Compute CTC loss for the given inputs
+        :param x: predicted values
+        :param y: reference values
+        :param x_length: length of prediction
+        :param y_length: length of references
+        :return:
+        """
+        if self.loss_func is None:
+            self.train()
+        return self.loss_func(x, y, x_length, y_length)
+
+    def init_weights(self):
+        """
+        Initialize weights with sensible defaults for the various layer types
+        :return:
+        """
+        ih = ((name, param.data) for name, param in self.named_parameters() if 'weight_ih' in name)
+        hh = ((name, param.data) for name, param in self.named_parameters() if 'weight_hh' in name)
+        b = ((name, param.data) for name, param in self.named_parameters() if 'bias' in name)
+        w = ((name, param.data) for name, param in self.named_parameters() if 'weight' in name and 'rnn' not in name and "batch_norm" not in name)
+        bn_w = ((name, param.data) for name, param in self.named_parameters() if 'batch_norm' in name and 'weight' in name)
+
+        for t in ih:
+            nn.init.xavier_uniform(t[1])
+        for t in w:
+            nn.init.xavier_uniform(t[1])
+        for t in hh:
+            nn.init.orthogonal(t[1])
+        for t in b:
+            nn.init.constant(t[1], 0)
+        for t in bn_w:
+            nn.init.constant(t[1], 1)
 
     def flatten_parameters(self):
-        self.rnns.flatten_parameters()
+        """
+        Call flatten_parameters on underlying RNN(s)
+        :return:
+        """
+        self.rnn.flatten_parameters()
 
     def get_seq_lens(self, input_length):
         """
@@ -95,11 +140,11 @@ class DeepSpeechOptim(SpeechModel):
                             kernel_size=tuple(cnn_cfg['kernel']),
                             stride=tuple(cnn_cfg['stride']),
                             padding=tuple(cnn_cfg['padding']))
-            cnns.append(cnn)
+            cnns.append(("{}.cnn".format(x), cnn),)
             if cnn_cfg['batch_norm']:
-                cnns.append(nn.BatchNorm2d(cnn_cfg['filters']))
-            cnns.append(activations[cnn_cfg['activation']](*cnn_cfg['activation_params']))
-        return nn.Sequential(*cnns)
+                cnns.append(("{}.batch_norm".format(x), nn.BatchNorm2d(cnn_cfg['filters'])))
+            cnns.append(("{}.act".format(x), activations[cnn_cfg['activation']](*cnn_cfg['activation_params'])),)
+        return nn.Sequential(OrderedDict(cnns))
 
     def _get_rnn_input_size(self, sample_rate, window_size):
         """
@@ -137,7 +182,7 @@ class DeepSpeechOptim(SpeechModel):
         x = x.transpose(1, 2).transpose(0, 1).contiguous()  # TxNxH
 
         output_lengths = self.get_seq_lens(lengths)
-        x, _ = self.rnns(x, output_lengths)
+        x, _ = self.rnn(x, output_lengths)
 
         # fully connected layer to output classes
         x = self.output(x)
@@ -148,6 +193,10 @@ class DeepSpeechOptim(SpeechModel):
         return x, output_lengths
 
     def get_filter_images(self):
+        """
+        Generate a grid of images representing the convolution layer weights
+        :return: list of images
+        """
         images = []
         x = 0
         for mod in self.conv:

@@ -33,19 +33,28 @@ class Trainer(object):
         self.train_id = train_config['expt_id']
         self.tqdm=tqdm
         self.max_norm = self.cfg.get('max_norm', None)
-        self.logger = TensorboardLogger(train_config['expt_id'], self.output['log_path'])
+        self.logger = TensorboardLogger(train_config['expt_id'], self.output['log_path'], include_grad=True)
 
-    def warmup(self, model, corpus, optimizer, batch_size):
+    def warmup(self, model, corpus, optimizer):
+        """
+        Find the largest possible minibatch that will be performed during training, and perform a forward/backward
+        pass and optimizer step. This allocates much of the memory that will be needed during training and helps
+        to reduce fragmentation
+        :param model: The model to be trained
+        :param corpus: AudioDataset with the training corpus
+        :param optimizer: The optimizer to use for the forward step
+        :return:
+        """
         # warm up with the largest sized minibatch
-        data = corpus.get_largest_minibatch(batch_size)
+        data = corpus.get_largest_minibatch(self.cfg['batch_size'])
         feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, requires_grad=False) for i in data)
         if self.cuda:
             feat = feat.cuda(async=True)
         # self.logger.add_graph(model, (feat, feat_len))
+        optimizer.zero_grad()
         output, output_len = model(feat, feat_len)
         loss = model.loss(output, target, output_len, target_len)
         loss.backward()
-        optimizer.zero_grad()
         optimizer.step()
         del feat
         del loss
@@ -53,6 +62,14 @@ class Trainer(object):
         del output_len
 
     def train(self, model, corpus, eval=None):
+        """
+        Primary training method. Responsible for training the passed in model using data from the supplied corpus
+        according to the configuration of the Trainer object.
+        :param model: A patter.SpeechModel to train
+        :param corpus: AudioDataset with the training corpus
+        :param eval: Optional AudioDataset with a development corpus
+        :return:
+        """
         # set up data loaders
         train_sampler = BucketingSampler(corpus, batch_size=self.cfg['batch_size'])
         train_loader = DataLoader(corpus, num_workers=self.cfg['num_workers'], collate_fn=audio_seq_collate_fn,
@@ -74,6 +91,8 @@ class Trainer(object):
         del opt_cfg['optimizer']
         optimizer = optim_class(model.parameters(), **opt_cfg)
         print("Configured with optimizer:", optimizer)
+        # memoize initial optimizer state so we can reset it after warmup
+        optim_state_dict = optimizer.state_dict()
 
         # set up a learning rate scheduler if requested -- currently only StepLR supported
         if "scheduler" in self.cfg:
@@ -84,14 +103,20 @@ class Trainer(object):
 
         # warm up gpu memory cache by doing a fwd/bwd, validation, and resetting model
         print("Starting warmup...")
-        self.warmup(model, corpus, optimizer, self.cfg['batch_size'])
+        self.warmup(model, corpus, optimizer)
         avg_wer, avg_cer = validate(eval_loader, model)
         self.logger.log_epoch(0, 500, avg_wer, avg_cer, 500)
+        # initialize model and optimizer properly for real training
+        optimizer.load_state_dict(optim_state_dict)
+        model.init_weights()
+        del optim_state_dict
+        torch.cuda.synchronize()
         print("Warmup complete.")
 
         # primary training loop
         best_wer = math.inf
 
+        wers, cers, losses = [], [], []
         for epoch in range(self.cfg['epochs']):
             # shuffle the input data if required
             if epoch > 0:
@@ -101,11 +126,14 @@ class Trainer(object):
             scheduler.step()
             # print("> Learning rate annealed to {0:.6f}".format(scheduler.get_lr()[0]))
             
-            avg_loss = self.train_epoch(train_loader, model, optimizer, epoch)
+            avg_loss = self.train_epoch(model, train_loader, optimizer, epoch)
             print("Epoch {} Summary:".format(epoch))
             print('    Train:\tAverage Loss {loss:.3f}\t'.format(loss=avg_loss))
 
             avg_wer, avg_cer, val_loss, sample_decodes = validate(eval_loader, model, training=True, log_n_examples=10)
+            wers.append(avg_wer)
+            cers.append(avg_cer)
+            losses.append(avg_loss)
             print('    Validation:\tAverage WER {wer:.3f}\tAverage CER {cer:.3f}'
                   .format(wer=avg_wer, cer=avg_cer))
 
@@ -116,10 +144,19 @@ class Trainer(object):
 
             if avg_wer < best_wer:
                 best_wer = avg_wer
-                # print("Better model found. Saving.")
-                torch.save(SpeechModel.serialize(model, optimizer=optimizer), self.output['model_path'])
+                print("Better model found. Saving.")
+                torch.save(SpeechModel.serialize(model, optimizer=optimizer, epoch=epoch, loss_results=losses,
+                                                 cer_results=cers, wer_results=wers), self.output['model_path'])
 
-    def train_epoch(self, train_loader, model, optimizer, epoch):
+    def train_epoch(self, model, train_loader, optimizer, epoch):
+        """
+        Train the passed in model for a single epoch
+        :param model: SpeechModel to train
+        :param train_loader: DataLoader wrapping an AudioDataset for the training data
+        :param optimizer: Initialized optimizer to use
+        :param epoch: Current epoch number
+        :return:
+        """
         model.train()
 
         batch_time = AverageMeter()
@@ -140,6 +177,8 @@ class Trainer(object):
             if self.cuda:
                 feat = feat.cuda(async=True)
 
+            optimizer.zero_grad()
+
             # compute output
             # feat is (batch, 1,  feat_dim,  seq_len)
             # output is (seq_len, batch, output_dim)
@@ -147,23 +186,23 @@ class Trainer(object):
             loss = model.loss(output, target, output_len, target_len)
 
             # munge the loss
-            avg_loss = loss.data.sum() / feat.size(0)  # average the loss by minibatch
-            inf = math.inf
-            if avg_loss == inf or avg_loss == -inf:
+            loss = loss / feat.size(0)
+            if abs(loss.data.sum()) == math.inf: 
                 print("WARNING: received an inf loss, setting loss value to 0")
-                avg_loss = 0
-            self.logger.log_step(epoch*len(train_loader) + i, avg_loss)
-            losses.update(avg_loss, feat.size(0))
+                loss_value = 0
+            else:
+                loss_value = loss.data[0]
+            self.logger.log_step(epoch*len(train_loader) + i, loss_value)
+            losses.update(loss_value, feat.size(0))
 
             # compute gradient
-            optimizer.zero_grad()
             loss.backward()
             if self.max_norm:
                 torch.nn.utils.clip_grad_norm(model.parameters(), self.max_norm)
             optimizer.step()
 
             del feat
-            del avg_loss
+            del loss_value
             del loss
             del output
             del output_len
@@ -185,6 +224,12 @@ class Trainer(object):
 
     @classmethod
     def load(cls, trainer_config, tqdm=False):
+        """
+        Initialize a Trainer object based on a Trainer configuration
+        :param trainer_config:
+        :param tqdm:
+        :return:
+        """
         try:
             cfg = TrainerConfiguration().load(trainer_config)
         except ValidationError as err:

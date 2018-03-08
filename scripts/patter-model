@@ -17,10 +17,11 @@ def main():
     args = get_parser().parse_args()
 
     # load the model
-    model = ModelFactory.load(args.model_path)
+    model, package = ModelFactory.load(args.model_path, include_package=True)
 
     # print model structure and metadata
     print(model)
+    print(package)
 
 
 if __name__ == '__main__':

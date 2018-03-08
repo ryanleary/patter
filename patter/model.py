@@ -22,12 +22,17 @@ class ModelFactory(object):
         return klass(cfg.data)
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path, include_package=False):
         package = torch.load(path, map_location=lambda storage, loc: storage)
         cfg = package['config']
 
         model = cls.create(cfg)
         model.load_state_dict(package['state_dict'])
         model.flatten_parameters()
+
+        if include_package:
+            del package['state_dict']
+            del package['optim_dict']
+            return model, package
 
         return model
