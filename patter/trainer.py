@@ -131,13 +131,11 @@ class Trainer(object):
             print('    Train:\tAverage Loss {loss:.3f}\t'.format(loss=avg_loss))
 
             avg_wer, avg_cer, val_loss, sample_decodes = validate(eval_loader, model, training=True, log_n_examples=10)
-            wers.append(avg_wer)
-            cers.append(avg_cer)
-            losses.append(avg_loss)
             print('    Validation:\tAverage WER {wer:.3f}\tAverage CER {cer:.3f}'
                   .format(wer=avg_wer, cer=avg_cer))
 
             # log the result of the epoch
+            wers.append(avg_wer), cers.append(avg_cer), losses.append(avg_loss)
             self.logger.log_epoch(epoch+1, avg_loss, avg_wer, avg_cer, val_loss, model=model)
             self.logger.log_images(epoch+1, model.get_filter_images())
             self.logger.log_sample_decodes(epoch+1, sample_decodes)
