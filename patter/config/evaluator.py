@@ -1,10 +1,12 @@
 from marshmallow import Schema, fields
+from marshmallow.validate import OneOf
 
 from .dataset import DatasetConfig
+from patter.decoder import valid_decoders
 
 
 class DecoderConfig(Schema):
-    algorithm = fields.String(required=True)
+    algorithm = fields.String(required=True, validate=OneOf(valid_decoders))
     num_workers = fields.Integer(default=4, missing=4)
 
 
