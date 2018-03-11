@@ -225,6 +225,9 @@ class Trainer(object):
                 # this is a hack due to a pathological memory allocation case triggered during the sortagrad
                 # curriculum learning procedure
                 torch.cuda.empty_cache()
+
+            if self.output['checkpoint_interval'] > 0 and (i % self.output['checkpoint_interval']) == 0:
+                torch.save(SpeechModel.serialize(model, optimizer=optimizer, epoch=epoch, iteration=i), self.output['model_path']+".ckpt")
         return losses.avg
 
     @classmethod

@@ -4,6 +4,7 @@ from marshmallow import Schema, fields
 class TrainerOutputConfiguration(Schema):
     model_path = fields.String(required=True)
     log_path = fields.String(required=True)
+    checkpoint_interval = fields.Integer(default=0, missing=0)
 
 
 class OptimizerSettings(Schema):
