@@ -184,12 +184,13 @@ class Trainer(object):
             loss = model.loss(output, target, output_len, target_len)
 
             # munge the loss
-            loss = loss / feat.size(0)
-            if abs(loss.data.sum()) == math.inf: 
+            loss.div_(feat.size(0))
+            scalar_loss = loss.data.sum()
+            if abs(scalar_loss) == math.inf:
                 print("WARNING: received an inf loss, setting loss value to 0")
                 loss_value = 0
             else:
-                loss_value = loss.data[0]
+                loss_value = scalar_loss
             self.logger.log_step(epoch*len(train_loader) + i, loss_value)
             losses.update(loss_value, feat.size(0))
 
@@ -201,6 +202,7 @@ class Trainer(object):
 
             del feat
             del loss_value
+            del scalar_loss
             del loss
             del output
             del output_len
