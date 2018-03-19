@@ -104,8 +104,8 @@ class Trainer(object):
         # warm up gpu memory cache by doing a fwd/bwd, validation, and resetting model
         print("Starting warmup...")
         self.warmup(model, corpus, optimizer)
-        avg_wer, avg_cer = validate(eval_loader, model)
-        self.logger.log_epoch(0, 500, avg_wer, avg_cer, 500)
+        err = validate(eval_loader, model)
+        self.logger.log_epoch(0, 500, err.wer, err.cer, 500)
         # initialize model and optimizer properly for real training
         optimizer.load_state_dict(optim_state_dict)
         model.init_weights()
@@ -130,18 +130,18 @@ class Trainer(object):
             print("Epoch {} Summary:".format(epoch))
             print('    Train:\tAverage Loss {loss:.3f}\t'.format(loss=avg_loss))
 
-            avg_wer, avg_cer, val_loss, sample_decodes = validate(eval_loader, model, training=True, log_n_examples=10)
+            err, val_loss, sample_decodes = validate(eval_loader, model, training=True, log_n_examples=10)
             print('    Validation:\tAverage WER {wer:.3f}\tAverage CER {cer:.3f}'
-                  .format(wer=avg_wer, cer=avg_cer))
+                  .format(wer=err.wer, cer=err.cer))
 
             # log the result of the epoch
-            wers.append(avg_wer), cers.append(avg_cer), losses.append(avg_loss)
-            self.logger.log_epoch(epoch+1, avg_loss, avg_wer, avg_cer, val_loss, model=model)
+            wers.append(err.wer), cers.append(err.cer), losses.append(avg_loss)
+            self.logger.log_epoch(epoch+1, avg_loss, err.wer, err.cer, val_loss, model=model)
             self.logger.log_images(epoch+1, model.get_filter_images())
             self.logger.log_sample_decodes(epoch+1, sample_decodes)
 
-            if avg_wer < best_wer:
-                best_wer = avg_wer
+            if err.wer < best_wer:
+                best_wer = err.wer
                 print("Better model found. Saving.")
                 torch.save(SpeechModel.serialize(model, optimizer=optimizer, epoch=epoch, loss_results=losses,
                                                  cer_results=cers, wer_results=wers), self.output['model_path'])

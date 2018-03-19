@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from patter.config import EvaluatorConfiguration
 from patter.data import audio_seq_collate_fn
 from patter.decoder import GreedyCTCDecoder
-from patter.util import AverageMeter, split_targets
+from patter.util import AverageMeter, TranscriptionError, split_targets
 
 
 class Evaluator(object):
@@ -25,8 +25,7 @@ class Evaluator(object):
         if self.cuda:
             model = model.cuda()
 
-        wer, cer = validate(test_loader, model, decoder=None, tqdm=self.tqdm, verbose=self.verbose)
-        return wer, cer
+        return validate(test_loader, model, decoder=None, tqdm=self.tqdm, verbose=self.verbose)
 
     @classmethod
     def load(cls, evaluator_config, tqdm=False, verbose=False):
@@ -49,55 +48,54 @@ def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_e
     loader = tqdm_wrap(val_loader, desc="Validate", leave=False) if tqdm else val_loader
 
     end = time.time()
-    wer, cer = 0.0, 0.0
+    err = TranscriptionError()
     decodes = []
     refs = []
     for i, data in enumerate(loader):
-        # create variables
-        feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, volatile=True) for i in data)
-        if model.is_cuda:
-            feat = feat.cuda()
-
-        # compute output
-        output, output_len = model(feat, feat_len)
-
-        if training:
-            mb_loss = model.loss(output, target, output_len, target_len)
-            avg_loss = mb_loss.data.sum() / feat.size(0)  # average the loss by minibatch
-            inf = math.inf
-            if avg_loss == inf or avg_loss == -inf:
-                print("WARNING: received an inf loss, setting loss value to 0")
-                avg_loss = 0
-            losses.update(avg_loss, feat.size(0))
-
-        # do the decode
-        decoded_output, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)
-        target_strings = decoder.convert_to_strings(split_targets(target.data, target_len.data))
-
-        if len(decodes) < log_n_examples:
-            decodes.append(decoded_output[0][0])
-            refs.append(target_strings[0][0])
-
-        for x in range(len(target_strings)):
-            transcript, reference = decoded_output[x][0], target_strings[x][0]
-            wer_inst = decoder.wer(transcript, reference) / float(len(reference.split()))
-            cer_inst = decoder.cer(transcript, reference) / float(len(reference))
-            wer += wer_inst
-            cer += cer_inst
-            if verbose:
-                print("Ref:", reference.lower())
-                print("Hyp:", transcript.lower())
-                print("WER:", wer_inst, "CER:", cer_inst, "\n")
-
-        del output
-        del output_len
-
+        err += validate_batch(i, data, model, decoder, verbose=verbose, losses=losses if training else None)
         # measure time taken
         batch_time.update(time.time() - end)
         end = time.time()
-    wer = wer * 100 / len(val_loader.dataset)
-    cer = cer * 100 / len(val_loader.dataset)
 
     if training:
-        return wer, cer, losses.avg, list(zip(decodes, refs))
-    return wer, cer
+        return err, losses.avg, list(zip(decodes, refs))
+    return err
+
+
+def validate_batch(i, data, model, decoder, verbose=False, losses=None):
+    # create variables
+    feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, volatile=True) for i in data)
+    if model.is_cuda:
+        feat = feat.cuda()
+
+    # compute output
+    output, output_len = model(feat, feat_len)
+
+    if losses is not None:
+        mb_loss = model.loss(output, target, output_len, target_len)
+        avg_loss = mb_loss.data.sum() / feat.size(0)  # average the loss by minibatch
+        inf = math.inf
+        if avg_loss == inf or avg_loss == -inf:
+            print("WARNING: received an inf loss, setting loss value to 0")
+            avg_loss = 0
+        losses.update(avg_loss, feat.size(0))
+
+    # do the decode
+    decoded_output, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)
+    target_strings = decoder.convert_to_strings(split_targets(target.data, target_len.data))
+
+    example = (decoded_output[0][0], target_strings[0][0])
+
+    err = TranscriptionError()
+    for x in range(len(target_strings)):
+        transcript, reference = decoded_output[x][0], target_strings[x][0]
+        err_inst = TranscriptionError.calculate(transcript, reference)
+        err += err_inst
+        if verbose:
+            print("Ref:", reference.lower())
+            print("Hyp:", transcript.lower())
+            print("WER:", err_inst.wer, "CER:", err_inst.cer, "\n")
+
+    del output
+    del output_len
+    return err, example
