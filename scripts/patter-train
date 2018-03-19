@@ -50,7 +50,7 @@ def main():
     val_corpus = AudioDataset.from_config(corpus_config, model.input_cfg, model.labels, manifest="val")
 
     # kick off the model training
-    trainer.train(model, train_corpus, eval=val_corpus)
+    trainer.train(model, train_corpus, eval_corpus=val_corpus)
 
 
 if __name__ == '__main__':

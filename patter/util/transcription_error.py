@@ -62,5 +62,5 @@ class TranscriptionError(object):
         for k in self.char_errors.keys():
             self.char_errors[k] = self.char_errors[k] + other.char_errors[k]
         self.tokens += other.tokens
-        self.chars += other.tokens
+        self.chars += other.chars
         return self

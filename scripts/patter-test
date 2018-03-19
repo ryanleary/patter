@@ -33,10 +33,16 @@ def main():
     test_corpus = AudioDataset.from_config(testing_config, model.input_cfg, model.labels, manifest="test")
 
     # kick off the test
-    wer, cer = evaluator.eval(model, test_corpus)
-    print('Test Summary \t'
-          'Average WER {wer:.3f}\t'
-          'Average CER {cer:.3f}\t'.format(wer=wer, cer=cer))
+    errors = evaluator.eval(model, test_corpus)
+    print('Test Summary:')
+    print('WER {wer:.3f} [ {errs} / {tokens}, {ins} ins, {dels} del, {sub} sub ]'
+          .format(wer=errors.wer * 100, errs=int(errors.wer*errors.tokens), tokens=errors.tokens,
+                  ins=errors.word_errors["insert"], dels=errors.word_errors["delete"],
+                  sub=errors.word_errors["replace"]))
+    print('CER {cer:.3f} [ {errs} / {chars}, {ins} ins, {dels} del, {sub} sub ]'
+          .format(cer=errors.cer * 100, errs=int(errors.cer*errors.chars), chars=errors.chars,
+                  ins=errors.char_errors["insert"], dels=errors.char_errors["delete"],
+                  sub=errors.char_errors["replace"]))
 
 
 if __name__ == '__main__':

@@ -32,8 +32,8 @@ class TestTranscriptionError(unittest.TestCase):
     def test_inplace_addition_calculation(self):
         err = TranscriptionError()
 
-        hyp1 = "Ryan is cool"
-        ref1 = "Brian is cool"
+        hyp1 = "ryan is cool"
+        ref1 = "brian is cool"
 
         err += TranscriptionError.calculate(hyp1, ref1)
         self.assertEqual(err.wer, 1 / 3, "Word Error Rate is incorrect")
@@ -43,3 +43,4 @@ class TestTranscriptionError(unittest.TestCase):
 
         err += TranscriptionError.calculate(hyp2, ref2)
         self.assertEqual(err.wer, 2 / 11, "Combined word error rate is incorrect")
+        self.assertEqual(err.cer, 5 / 67, "Combined character error rate is incorrect")

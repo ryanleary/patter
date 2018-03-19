@@ -49,16 +49,19 @@ def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_e
 
     end = time.time()
     err = TranscriptionError()
-    decodes = []
-    refs = []
+    examples = []
     for i, data in enumerate(loader):
-        err += validate_batch(i, data, model, decoder, verbose=verbose, losses=losses if training else None)
+        err_inst, example = validate_batch(i, data, model, decoder, verbose=verbose, losses=losses if training else None)
+        err += err_inst
+        if len(examples) < log_n_examples:
+            examples.append(example)
+
         # measure time taken
         batch_time.update(time.time() - end)
         end = time.time()
 
     if training:
-        return err, losses.avg, list(zip(decodes, refs))
+        return err, losses.avg, examples
     return err
 
 

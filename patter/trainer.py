@@ -31,7 +31,7 @@ class Trainer(object):
         self.output = train_config['output']
         self.cuda = train_config['cuda']
         self.train_id = train_config['expt_id']
-        self.tqdm=tqdm
+        self.tqdm = tqdm
         self.max_norm = self.cfg.get('max_norm', None)
         self.logger = TensorboardLogger(train_config['expt_id'], self.output['log_path'], include_grad=True)
 
@@ -61,21 +61,21 @@ class Trainer(object):
         del output
         del output_len
 
-    def train(self, model, corpus, eval=None):
+    def train(self, model, corpus, eval_corpus=None):
         """
         Primary training method. Responsible for training the passed in model using data from the supplied corpus
         according to the configuration of the Trainer object.
         :param model: A patter.SpeechModel to train
         :param corpus: AudioDataset with the training corpus
-        :param eval: Optional AudioDataset with a development corpus
+        :param eval_corpus: Optional AudioDataset with a development corpus
         :return:
         """
         # set up data loaders
         train_sampler = BucketingSampler(corpus, batch_size=self.cfg['batch_size'])
         train_loader = DataLoader(corpus, num_workers=self.cfg['num_workers'], collate_fn=audio_seq_collate_fn,
                                   pin_memory=True, batch_sampler=train_sampler)
-        if eval is not None:
-            eval_loader = DataLoader(eval, num_workers=self.cfg['num_workers'], collate_fn=audio_seq_collate_fn,
+        if eval_corpus is not None:
+            eval_loader = DataLoader(eval_corpus, num_workers=self.cfg['num_workers'], collate_fn=audio_seq_collate_fn,
                                      pin_memory=True, batch_size=self.cfg['batch_size'])
         else:
             eval_loader = None
