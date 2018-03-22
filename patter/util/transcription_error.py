@@ -10,11 +10,11 @@ class TranscriptionError(object):
 
     @property
     def wer(self):
-        return sum(self.word_errors.values()) / max(1, self.tokens)
+        return 100 * sum(self.word_errors.values()) / max(1, self.tokens)
 
     @property
     def cer(self):
-        return sum(self.char_errors.values()) / max(1, self.chars)
+        return 100 * sum(self.char_errors.values()) / max(1, self.chars)
 
     @classmethod
     def calculate(cls, hypothesis, reference):

@@ -127,7 +127,7 @@ class Trainer(object):
             # print("> Learning rate annealed to {0:.6f}".format(scheduler.get_lr()[0]))
             
             avg_loss = self.train_epoch(model, train_loader, optimizer, epoch)
-            print("Epoch {} Summary:".format(epoch))
+            print("Epoch {} Summary:".format(epoch+1))
             print('    Train:\tAverage Loss {loss:.3f}\t'.format(loss=avg_loss))
 
             err, val_loss, sample_decodes = validate(eval_loader, model, training=True, log_n_examples=10)
