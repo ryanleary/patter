@@ -31,8 +31,9 @@ class Evaluator(object):
     def load(cls, evaluator_config, tqdm=False, verbose=False):
         try:
             cfg = EvaluatorConfiguration().load(evaluator_config)
+            if len(cfg.errors) > 0:
+                raise ValidationError(cfg.errors)
         except ValidationError as err:
-            print(err.messages)
             raise err
         return cls(cfg.data, tqdm=tqdm, verbose=verbose)
 

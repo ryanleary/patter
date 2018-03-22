@@ -101,6 +101,8 @@ class AudioDataset(Dataset):
     def from_config(cls, corpus_config, feature_config, labels, manifest="train"):
         try:
             cfg = CorporaConfiguration().load(corpus_config)
+            if len(cfg.errors) > 0:
+                raise ValidationError(cfg.errors)
         except ValidationError as err:
             raise err
         config = cfg.data

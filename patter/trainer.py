@@ -232,7 +232,8 @@ class Trainer(object):
         """
         try:
             cfg = TrainerConfiguration().load(trainer_config)
+            if len(cfg.errors) > 0:
+                raise ValidationError(cfg.errors)
         except ValidationError as err:
-            print(err.messages)
             raise err
         return cls(cfg.data, tqdm=tqdm)
