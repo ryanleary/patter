@@ -41,8 +41,10 @@ class Evaluator(object):
 
 
 def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_examples=0, verbose=False):
+    target_decoder = GreedyCTCDecoder(model.labels)
     if decoder is None:
-        decoder = GreedyCTCDecoder(model.labels)
+        decoder = target_decoder
+
     batch_time = AverageMeter()
     losses = AverageMeter()
 
@@ -54,7 +56,7 @@ def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_e
     err = TranscriptionError()
     examples = []
     for i, data in enumerate(loader):
-        err_inst, example = validate_batch(i, data, model, decoder, verbose=verbose, losses=losses if training else None)
+        err_inst, example = validate_batch(i, data, model, decoder, target_decoder, verbose=verbose, losses=losses if training else None)
         err += err_inst
         if len(examples) < log_n_examples:
             examples.append(example)
@@ -68,7 +70,7 @@ def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_e
     return err
 
 
-def validate_batch(i, data, model, decoder, verbose=False, losses=None):
+def validate_batch(i, data, model, decoder, target_decoder, verbose=False, losses=None):
     # create variables
     feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, volatile=True) for i in data)
     if model.is_cuda:
@@ -88,7 +90,7 @@ def validate_batch(i, data, model, decoder, verbose=False, losses=None):
 
     # do the decode
     decoded_output, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)
-    target_strings = decoder.convert_to_strings(split_targets(target.data, target_len.data))
+    target_strings = target_decoder.convert_to_strings(split_targets(target.data, target_len.data))
 
     example = (decoded_output[0][0], target_strings[0][0])
 

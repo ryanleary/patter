@@ -33,8 +33,8 @@ class DeepSpeechOptim(SpeechModel):
         self.input_cfg = cfg['input']
         self.loss_func = None
 
-        # Add a `\0` label as a "BLANK" symbol for CTC
-        self.labels = ['\0'] + cfg['labels']['labels']
+        # Add a `\u00a0` (no break space) label as a "BLANK" symbol for CTC
+        self.labels = ['\u00a0'] + cfg['labels']['labels']
 
         # create the convolutional input layer(s)
         self.conv = self._get_cnn_layers(cfg['cnn'])

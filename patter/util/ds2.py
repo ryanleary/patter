@@ -17,7 +17,7 @@ def convert_state_dict(package):
     blacklist = ['rnns.0.batch_norm.module.weight', 'rnns.0.batch_norm.module.bias',
                  'rnns.0.batch_norm.module.running_mean', 'rnns.0.batch_norm.module.running_var']
     state_dict = {}
-    for k, v in package['state_dict'].items()
+    for k, v in package['state_dict'].items():
         if k in blacklist:
             continue
         if k.startswith("rnns."):
