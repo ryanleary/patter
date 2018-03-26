@@ -73,10 +73,10 @@ class Trainer(object):
         # set up data loaders
         train_sampler = BucketingSampler(corpus, batch_size=self.cfg['batch_size'])
         train_loader = DataLoader(corpus, num_workers=self.cfg['num_workers'], collate_fn=audio_seq_collate_fn,
-                                  pin_memory=True, batch_sampler=train_sampler)
+                                  pin_memory=self.cuda, batch_sampler=train_sampler)
         if eval_corpus is not None:
             eval_loader = DataLoader(eval_corpus, num_workers=self.cfg['num_workers'], collate_fn=audio_seq_collate_fn,
-                                     pin_memory=True, batch_size=self.cfg['batch_size'])
+                                     pin_memory=self.cuda, batch_size=self.cfg['batch_size'])
         else:
             eval_loader = None
 

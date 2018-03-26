@@ -6,6 +6,10 @@ class GreedyCTCDecoder(Decoder):
     def __init__(self, labels, blank_index=0):
         super(GreedyCTCDecoder, self).__init__(labels, blank_index)
 
+    @classmethod
+    def from_config(cls, cfg, labels):
+        return cls(labels)
+
     def convert_to_strings(self, sequences, sizes=None, remove_repetitions=False, return_offsets=False):
         """Given a list of numeric sequences, returns the corresponding strings"""
         strings = []

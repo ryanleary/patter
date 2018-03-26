@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from patter.config import EvaluatorConfiguration
 from patter.data import audio_seq_collate_fn
-from patter.decoder import GreedyCTCDecoder
+from patter.decoder import DecoderFactory, GreedyCTCDecoder
 from patter.util import AverageMeter, TranscriptionError, split_targets
 
 
@@ -20,15 +20,17 @@ class Evaluator(object):
 
     def eval(self, model, corpus):
         test_loader = DataLoader(corpus, num_workers=self.cfg['num_workers'], collate_fn=audio_seq_collate_fn,
-                                 pin_memory=True, batch_size=self.cfg['batch_size'])
+                                 pin_memory=self.cuda, batch_size=self.cfg['batch_size'])
 
         if self.cuda:
             model = model.cuda()
 
-        return validate(test_loader, model, decoder=None, tqdm=self.tqdm, verbose=self.verbose)
+        decoder = DecoderFactory.create(self.cfg['decoder'], model.labels)
+        return validate(test_loader, model, decoder=decoder, tqdm=self.tqdm, verbose=self.verbose)
 
     @classmethod
     def load(cls, evaluator_config, tqdm=False, verbose=False):
+        print(evaluator_config)
         try:
             cfg = EvaluatorConfiguration().load(evaluator_config)
             if len(cfg.errors) > 0:

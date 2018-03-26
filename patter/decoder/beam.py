@@ -13,6 +13,13 @@ class BeamCTCDecoder(Decoder):
         self._decoder = CTCBeamDecoder(labels, lm_path, alpha, beta, cutoff_top_n, cutoff_prob, beam_width,
                                        num_processes, blank_index)
 
+    @classmethod
+    def from_config(cls, cfg, labels):
+        return cls(labels, lm_path=cfg['beam_config']['lm']['lm_path'], alpha=cfg['beam_config']['lm']['alpha'],
+                   beta=cfg['beam_config']['lm']['beta'], cutoff_top_n=cfg['beam_config']['cutoff_top_n'],
+                   cutoff_prob=cfg['beam_config']['cutoff_prob'], beam_width=cfg['beam_config']['beam_width'],
+                   num_processes=cfg['num_workers'])
+
     def convert_to_strings(self, out, seq_len):
         results = []
         for b, batch in enumerate(out):
