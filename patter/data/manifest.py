@@ -2,7 +2,7 @@ import json
 
 
 class Manifest(object):
-    def __init__(self, manifest_path, max_duration=None, min_duration=None):
+    def __init__(self, manifest_path, max_duration=None, min_duration=None, sort_by_duration=True):
         ids = []
         duration = 0.0
         filtered_duration = 0.0
@@ -17,6 +17,8 @@ class Manifest(object):
                     continue
                 ids.append(data)
                 duration += data['duration']
+        if sort_by_duration:
+            ids = sorted(ids, key=lambda x: x['duration'])
         self._data = ids
         self._size = len(ids)
         self._duration = duration
