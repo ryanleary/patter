@@ -12,7 +12,7 @@ def to_np(x):
 
 class TensorboardLogger(object):
     def __init__(self, tb_id, log_dir, include_grad=False):
-        expt_name = datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname() + '_' + tb_id
+        expt_name = tb_id + '_' + datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname()
         log_dir = Path(log_dir) / expt_name
 
         try:

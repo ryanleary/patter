@@ -50,7 +50,7 @@ def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_e
 
     model.eval()
 
-    loader = tqdm_wrap(val_loader, desc="Validate", leave=False) if tqdm else val_loader
+    loader = tqdm_wrap(val_loader, desc="Validate", leave=not training) if tqdm else val_loader
 
     end = time.time()
     err = TranscriptionError()

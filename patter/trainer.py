@@ -220,6 +220,11 @@ class Trainer(object):
                                                                       loss=losses))
             else:
                 loader.set_postfix(loss=losses.val)
+
+            if epoch == 0 and (i%2) == 0:
+                # this is a hack due to a pathological memory allocation case triggered during the sortagrad
+                # curriculum learning procedure
+                torch.cuda.empty_cache()
         return losses.avg
 
     @classmethod
