@@ -119,11 +119,11 @@ class DeepSpeechOptim(SpeechModel):
         :param input_length: 1D Tensor
         :return: 1D Tensor scaled by model
         """
-        seq_len = input_length
+        seq_len = input_length.squeeze(0)
         for m in self.conv:
             if type(m) == nn.modules.conv.Conv2d:
                 seq_len = ((seq_len + 2 * m.padding[1] - m.dilation[1] * (m.kernel_size[1] - 1) - 1) / m.stride[1] + 1)
-        return seq_len.int()
+        return seq_len.int().unsqueeze(0)
 
     @staticmethod
     def _get_cnn_layers(cfg):
@@ -170,17 +170,20 @@ class DeepSpeechOptim(SpeechModel):
         The output (in inference mode) is a Variable containing posteriors over each character class at each timestep
         for each example in the minibatch.
 
-        :param x: (batch_size, 1, stft_size, max_seq_len) Raw single-channel spectrogram input
+        :param x: (1, batch_size, stft_size, max_seq_len) Raw single-channel spectrogram input
         :param lengths: (batch,) Sequence_length for each sample in batch
-        :return: FloatTensor(batch_size, max_seq_len, num_classes), IntTensor(batch_size)
+        :return: FloatTensor(max_seq_len, batch_size, num_classes), IntTensor(batch_size)
         """
-        x = self.conv(x)
+
+        # transpose to be of shape (batch_size, num_channels [1], height, width) and do CNN feature extraction
+        x = self.conv(x.transpose(0,1))
 
         # collapse cnn channels into a feature vector per timestep
         sizes = x.size()
         x = x.view(sizes[0], sizes[1] * sizes[2], sizes[3])  # Collapse feature dimension
         x = x.transpose(1, 2).transpose(0, 1).contiguous()  # TxNxH
 
+        # calculate number of timesteps and run through RNN
         output_lengths = self.get_seq_lens(lengths)
         x, _ = self.rnn(x, output_lengths)
 

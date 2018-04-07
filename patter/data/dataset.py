@@ -9,12 +9,17 @@ from marshmallow.exceptions import ValidationError
 
 
 def audio_seq_collate_fn(batch):
+    """
+    collate a batch (iterable of (sample tensor, label tensor) tuples) into properly shaped data tensors
+    :param batch:
+    :return: inputs (1, batch_size, num_features, seq_length), targets, input_lengths, target_sizes
+    """
     # sort batch by descending sequence length (for packed sequences later)
     batch.sort(key=lambda x: -x[0].size(1))
     minibatch_size = len(batch)
 
     # init tensors we need to return
-    inputs = torch.zeros(minibatch_size, 1, batch[0][0].size(0), batch[0][0].size(1))
+    inputs = torch.zeros(1, minibatch_size, batch[0][0].size(0), batch[0][0].size(1))
     input_lengths = torch.IntTensor(minibatch_size)
     target_sizes = torch.IntTensor(minibatch_size)
     targets = []
@@ -22,11 +27,11 @@ def audio_seq_collate_fn(batch):
     # iterate over minibatch to fill in tensors appropriately
     for i, sample in enumerate(batch):
         input_lengths[i] = sample[0].size(1)
-        inputs[i][0].narrow(1, 0, sample[0].size(1)).copy_(sample[0])
+        inputs[0][i].narrow(1, 0, sample[0].size(1)).copy_(sample[0])
         target_sizes[i] = len(sample[1])
         targets.extend(sample[1])
     targets = torch.IntTensor(targets)
-    return inputs, targets, input_lengths, target_sizes
+    return inputs, targets, input_lengths.unsqueeze(0), target_sizes
 
 
 class BucketingSampler(Sampler):
@@ -86,8 +91,8 @@ class AudioDataset(Dataset):
         freq_size = longest_sample.size(0)
         max_seqlength = longest_sample.size(1)
         targets = torch.IntTensor(max_seqlength*minibatch_size)
-        feats = torch.zeros(minibatch_size, 1, freq_size, max_seqlength)
-        input_lengths = torch.IntTensor(minibatch_size)
+        feats = torch.zeros(1, minibatch_size, freq_size, max_seqlength)
+        input_lengths = torch.IntTensor(1, minibatch_size)
         input_lengths.fill_(max_seqlength)
         return feats, targets, input_lengths, input_lengths
 

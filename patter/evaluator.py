@@ -23,9 +23,9 @@ class Evaluator(object):
                                  pin_memory=self.cuda, batch_size=self.cfg['batch_size'])
 
         if self.cuda:
-            model = model.cuda()
+            model = torch.nn.DataParallel(model.cuda(), dim=1)
 
-        decoder = DecoderFactory.create(self.cfg['decoder'], model.labels)
+        decoder = DecoderFactory.create(self.cfg['decoder'], model.module.labels)
         return validate(test_loader, model, decoder=decoder, tqdm=self.tqdm, verbose=self.verbose)
 
     @classmethod
@@ -41,7 +41,8 @@ class Evaluator(object):
 
 
 def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_examples=0, verbose=False):
-    target_decoder = GreedyCTCDecoder(model.labels)
+    labels = model.module.labels if type(model) == torch.nn.DataParallel else model.labels
+    target_decoder = GreedyCTCDecoder(labels)
     if decoder is None:
         decoder = target_decoder
 
@@ -71,16 +72,22 @@ def validate(val_loader, model, decoder=None, tqdm=True, training=False, log_n_e
 
 
 def validate_batch(i, data, model, decoder, target_decoder, verbose=False, losses=None):
+    loss_fn = model.module.loss if type(model) == torch.nn.DataParallel else model.loss
+    is_cuda = model.module.is_cuda if type(model) == torch.nn.DataParallel else model.is_cuda
     # create variables
     feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, volatile=True) for i in data)
-    if model.is_cuda:
+    if is_cuda:
         feat = feat.cuda()
+        target = target.cpu()
+        feat_len = feat_len.cpu()
+        target_len = target_len.cpu()
 
     # compute output
     output, output_len = model(feat, feat_len)
+    output_len = output_len.cpu().squeeze()
 
     if losses is not None:
-        mb_loss = model.loss(output, target, output_len, target_len)
+        mb_loss = loss_fn(output, target, output_len, target_len)
         avg_loss = mb_loss.data.sum() / feat.size(0)  # average the loss by minibatch
         inf = math.inf
         if avg_loss == inf or avg_loss == -inf:

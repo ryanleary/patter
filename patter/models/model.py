@@ -48,3 +48,4 @@ class SpeechModel(nn.Module):
         if meta is not None:
             package['meta'] = meta
         return package
+

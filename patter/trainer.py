@@ -53,7 +53,7 @@ class Trainer(object):
         # self.logger.add_graph(model, (feat, feat_len))
         optimizer.zero_grad()
         output, output_len = model(feat, feat_len)
-        loss = model.loss(output, target, output_len, target_len)
+        loss = model.module.loss(output, target, output_len.cpu().squeeze(), target_len)
         loss.backward()
         optimizer.step()
         del feat
@@ -81,7 +81,7 @@ class Trainer(object):
             eval_loader = None
 
         if self.cuda:
-            model = model.cuda()
+            model = torch.nn.DataParallel(model.cuda(), dim=1)
 
         print(model)
 
@@ -108,7 +108,7 @@ class Trainer(object):
         self.logger.log_epoch(0, 500, err.wer, err.cer, 500)
         # initialize model and optimizer properly for real training
         optimizer.load_state_dict(optim_state_dict)
-        model.init_weights()
+        model.module.init_weights()
         del optim_state_dict
         torch.cuda.synchronize()
         print("Warmup complete.")
@@ -137,13 +137,13 @@ class Trainer(object):
             # log the result of the epoch
             wers.append(err.wer), cers.append(err.cer), losses.append(avg_loss)
             self.logger.log_epoch(epoch+1, avg_loss, err.wer, err.cer, val_loss, model=model)
-            self.logger.log_images(epoch+1, model.get_filter_images())
+            self.logger.log_images(epoch+1, model.module.get_filter_images())
             self.logger.log_sample_decodes(epoch+1, sample_decodes)
 
             if err.wer < best_wer:
                 best_wer = err.wer
                 print("Better model found. Saving.")
-                torch.save(SpeechModel.serialize(model, optimizer=optimizer, epoch=epoch, loss_results=losses,
+                torch.save(SpeechModel.serialize(model.module, optimizer=optimizer, epoch=epoch, loss_results=losses,
                                                  cer_results=cers, wer_results=wers), self.output['model_path'])
 
     def train_epoch(self, model, train_loader, optimizer, epoch):
@@ -181,7 +181,7 @@ class Trainer(object):
             # feat is (batch, 1,  feat_dim,  seq_len)
             # output is (seq_len, batch, output_dim)
             output, output_len = model(feat, feat_len)
-            loss = model.loss(output, target, output_len, target_len)
+            loss = model.module.loss(output, target, output_len.cpu().squeeze(), target_len)
 
             # munge the loss
             loss.div_(feat.size(0))
@@ -227,7 +227,7 @@ class Trainer(object):
                 torch.cuda.empty_cache()
 
             if self.output['checkpoint_interval'] > 0 and (i % self.output['checkpoint_interval']) == 0:
-                torch.save(SpeechModel.serialize(model, optimizer=optimizer, epoch=epoch, iteration=i), self.output['model_path']+".ckpt")
+                torch.save(SpeechModel.serialize(model.module, optimizer=optimizer, epoch=epoch, iteration=i), self.output['model_path']+".ckpt")
         return losses.avg
 
     @classmethod

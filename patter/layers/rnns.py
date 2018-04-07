@@ -50,12 +50,22 @@ class DeepBatchRNN(nn.Module):
             self.rnns[x].flatten_parameters()
 
     def forward(self, x, lengths):
-        x = nn.utils.rnn.pack_padded_sequence(x, lengths.data.numpy())
+        max_seq_length = x.size(0)
+        x = nn.utils.rnn.pack_padded_sequence(x, lengths.data.squeeze().cpu().numpy())
         x = self.rnns(x)
         if self.batch_norm is not None:
             x = x._replace(data=self.batch_norm(x.data))
         x, _ = nn.utils.rnn.pad_packed_sequence(x)
-        return x, None
+
+        # hack: check if the seq_len of the tensor returned from pad_packed_sequence matches the max_seq_len, if not
+        # pad so that the seq_lens match. Without this, data cannot be split along batch dimension for multi-gpu
+        # training. Can be removed when pytorch#6327 is merged and code here updated to leverage the change
+        if x.size(0) != max_seq_length:
+            padded_output = torch.autograd.Variable(x.data.new(max_seq_length, x.size(1), x.size(2)).fill_(0.0))
+            padded_output[:x.size(0), :, :] = x
+        else:
+            padded_output = x
+        return padded_output, None
 
 
 class NoiseRNN(nn.Module):
