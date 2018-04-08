@@ -1,12 +1,14 @@
 import torch
 from marshmallow.exceptions import ValidationError
 from .models.deepspeech import DeepSpeechOptim
+from .models.wav2letter import Wav2LetterOptim
 from .config import SpeechModelConfiguration
 
 
 class ModelFactory(object):
     _models = {
-        "DeepSpeechOptim": DeepSpeechOptim
+        "DeepSpeechOptim": DeepSpeechOptim,
+        "Wav2LetterOptim": Wav2LetterOptim
     }
 
     @classmethod
