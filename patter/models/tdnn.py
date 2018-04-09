@@ -66,6 +66,13 @@ class TDNNOptim(SpeechModel):
         self.inference_softmax = InferenceBatchSoftmax()
         self.init_weights()
 
+    def flatten_parameters(self):
+        """
+        Call flatten_parameters on underlying RNN(s)
+        :return:
+        """
+        pass
+
     def train(self, mode=True):
         """
         Enter (or exit) training mode. Initializes loss function if necessary
@@ -102,8 +109,8 @@ class TDNNOptim(SpeechModel):
 
         # for t in ih:
         #     nn.init.xavier_uniform(t[1])
-        for t in w:
-            nn.init.xavier_uniform(t[1])
+        # for t in w:
+        #     nn.init.xavier_uniform(t[1])
         # for t in hh:
         #     nn.init.orthogonal(t[1])
         for t in b:
@@ -176,13 +183,12 @@ class TDNNOptim(SpeechModel):
         """
 
         # transpose to be of shape (batch_size, num_channels [1], height, width) and do CNN feature extraction
-        x = self.conv(x.squeeze())
+        x = self.conv(x.squeeze(0))
         print(x.shape)
 
         # if training, return only logits (ctc loss calculates softmax), otherwise do softmax
-        x = self.inference_softmax(x, dim=2)
-        del lengths
-        return x
+        x = self.inference_softmax(x.transpose(0,2).transpose(1,2), dim=2)
+        return x, lengths/2
 
     def get_filter_images(self):
         """
