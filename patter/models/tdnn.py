@@ -1,10 +1,11 @@
 import math
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.utils as vutils
 
 from collections import OrderedDict, defaultdict
 from patter.models.model import SpeechModel
-from patter.layers import NoiseRNN, DeepBatchRNN, LookaheadConvolution
+
 from .activation import InferenceBatchSoftmax, Swish
 
 try:
@@ -20,42 +21,45 @@ activations = {
 }
 
 
-class Wav2LetterOptim(SpeechModel):
+class GatedConvLayer(nn.Module):
+    def __init__(self, in_size, out_size, kernel_size, padding=0, stride=1, dropout=0.0, bias=True):
+        self.cnn = nn.Conv1D(in_channels=in_size, out_channes=out_size, kernel_size=kernel_size, padding=padding, stride=stride, bias=bias)
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, x):
+        x = self.dropout(F.glu(self.cnn(x), dim=1))
+        return x
+
+
+class TDNNOptim(SpeechModel):
     def __init__(self, cfg):
-        super(Wav2LetterOptim, self).__init__(cfg)
+        super(TDNNOptim, self).__init__(cfg)
         self.input_cfg = cfg['input']
         self.loss_func = None
 
         # Add a `\u00a0` (no break space) label as a "BLANK" symbol for CTC
         self.labels = ['\u00a0'] + cfg['labels']['labels']
 
-        def _block(in_channels, out_channels, kernel_size, padding = 0, stride = 1, bnorm = False, bias=True):
-            res = []
-
-            res.append(
-                nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
-                          kernel_size=kernel_size, padding=padding, stride=stride, bias=bias)
-            )
-            if bnorm:
-                res.append(nn.BatchNorm1d(out_channels))
-            res.append(nn.ReLU(inplace=True))
-            return res
-
-        size = 2048
-        bnorm = True
         self.conv = nn.Sequential(
-            *_block(in_channels=161, out_channels=256, kernel_size=7, padding=3, stride=2, bnorm = bnorm, bias=not bnorm),
-            *_block(in_channels=256, out_channels=256, kernel_size=7, padding=3, bnorm = bnorm, bias=not bnorm),
-            *_block(in_channels=256, out_channels=256, kernel_size=7, padding=3, bnorm = bnorm, bias=not bnorm),
-            *_block(in_channels=256, out_channels=256, kernel_size=7, padding=3, bnorm = bnorm, bias=not bnorm),
-            *_block(in_channels=256, out_channels=256, kernel_size=7, padding=3, bnorm = bnorm, bias=not bnorm),
-            *_block(in_channels=256, out_channels=256, kernel_size=7, padding=3, bnorm = bnorm, bias=not bnorm),
-            *_block(in_channels=256, out_channels=256, kernel_size=7, padding=3, bnorm = bnorm, bias=not bnorm),
-            *_block(in_channels=256, out_channels=256, kernel_size=7, padding=3, bnorm=bnorm, bias=not bnorm),
-
-            *_block(in_channels=256, out_channels=size, kernel_size=7, padding=3, bnorm = bnorm, bias=not bnorm),
-            *_block(in_channels=size, out_channels=size, kernel_size=1, bnorm = bnorm, bias=not bnorm),
-            nn.Conv1d(in_channels=size, out_channels=len(self.labels), kernel_size=1)
+            GatedConvLayer(in_size=161, out_size=400, kernel_size=13, stride=1, dropout=0.2),
+            GatedConvLayer(in_size=200, out_size=440, kernel_size=14, stride=1, dropout=0.214),
+            GatedConvLayer(in_size=220, out_size=484, kernel_size=15, stride=1, dropout=0.22898),
+            GatedConvLayer(in_size=242, out_size=532, kernel_size=16, stride=1, dropout=0.2450086),
+            GatedConvLayer(in_size=266, out_size=584, kernel_size=17, stride=1, dropout=0.262159202),
+            GatedConvLayer(in_size=292, out_size=642, kernel_size=18, stride=1, dropout=0.28051034614),
+            GatedConvLayer(in_size=321, out_size=706, kernel_size=19, stride=1, dropout=0.30014607037),
+            GatedConvLayer(in_size=353, out_size=776, kernel_size=20, stride=1, dropout=0.321156295296),
+            GatedConvLayer(in_size=388, out_size=852, kernel_size=21, stride=1, dropout=0.343637235966),
+            GatedConvLayer(in_size=426, out_size=936, kernel_size=22, stride=1, dropout=0.367691842484),
+            GatedConvLayer(in_size=468, out_size=1028, kernel_size=23, stride=1, dropout=0.393430271458),
+            GatedConvLayer(in_size=514, out_size=1130, kernel_size=24, stride=1, dropout=0.42097039046),
+            GatedConvLayer(in_size=565, out_size=1242, kernel_size=25, stride=1, dropout=0.450438317792),
+            GatedConvLayer(in_size=621, out_size=1366, kernel_size=26, stride=1, dropout=0.481969000038),
+            GatedConvLayer(in_size=683, out_size=1502, kernel_size=27, stride=1, dropout=0.51570683004),
+            GatedConvLayer(in_size=751, out_size=1652, kernel_size=28, stride=1, dropout=0.551806308143),
+            GatedConvLayer(in_size=826, out_size=1816, kernel_size=29, stride=1, dropout=0.590432749713),
+            GatedConvLayer(in_size=908, out_size=1816, kernel_size=30, stride=1, dropout=0.590432749713),
+            nn.Conv1d(in_channels=908, out_channels=len(self.labels), kernel_size=1)
         )
 
         # and output activation (softmax) ONLY at inference time (CTC applies softmax during training)
