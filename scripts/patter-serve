@@ -1,3 +1,45 @@
 #!/usr/bin/env
 
 import os
+import toml
+import argparse
+import sys
+import time
+import grpc
+from concurrent import futures
+
+from patter.server import SpeechServicer, add_SpeechServicer_to_server
+
+_ONE_DAY_IN_SECONDS = 60 * 60 * 24
+
+
+def get_parser():
+    parser = argparse.ArgumentParser(description="Patter STT Server")
+    parser.add_argument("server_config", help="Configuration file specifying server parameters")
+
+    return parser
+
+
+def serve():
+    args = get_parser().parse_args()
+
+    # load configuration
+    with open(args.server_config, "r") as fh:
+        serve_config = toml.load(fh)
+
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    add_SpeechServicer_to_server(SpeechServicer.from_config(serve_config), server)
+    server.add_insecure_port('[::]:50051')
+    server.start()
+    print("Server started.")
+
+    while True:
+        try:
+            time.sleep(_ONE_DAY_IN_SECONDS)
+        except KeyboardInterrupt:
+            server.stop(0)
+            sys.exit(1)
+
+
+if __name__ == "__main__":
+    serve()

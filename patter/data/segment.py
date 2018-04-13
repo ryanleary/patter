@@ -12,11 +12,15 @@ class AudioSegment(object):
     :raises TypeError: If the sample data type is not float or int.
     """
 
-    def __init__(self, samples, sample_rate):
+    def __init__(self, samples, sample_rate, target_sr=None):
         """Create audio segment from samples.
         Samples are convert float32 internally, with int scaled to [-1, 1].
         """
-        self._samples = self._convert_samples_to_float32(samples)
+        samples = self._convert_samples_to_float32(samples)
+        if target_sr is not None and target_sr != sample_rate:
+            samples = librosa.core.resample(samples, sample_rate, target_sr)
+            sample_rate = target_sr
+        self._samples = samples
         self._sample_rate = sample_rate
         if self._samples.ndim >= 2:
             self._samples = np.mean(self._samples, 1)
@@ -72,10 +76,7 @@ class AudioSegment(object):
         if int_values:
             samples *= (1 << 31)
         samples = samples.transpose()
-        if target_sr is not None and target_sr != sample_rate:
-            samples = librosa.core.resample(samples, sample_rate, target_sr)
-            sample_rate = target_sr
-        return cls(samples, sample_rate)
+        return cls(samples, sample_rate, target_sr=target_sr)
 
     @property
     def samples(self):

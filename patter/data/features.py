@@ -23,11 +23,14 @@ class PerturbedSpectrogramFeaturizer(object):
 
     def process(self, file_path):
         audio = AudioSegment.from_file(file_path, target_sr=self.cfg['sample_rate'], int_values=self.cfg['int_values'])
-        self.augmentor.perturb(audio)
+        return self.process_segment(audio)
+
+    def process_segment(self, audio_segment):
+        self.augmentor.perturb(audio_segment)
 
         n_fft = int(self.cfg['sample_rate'] * self.cfg['window_size'])
         hop_length = int(self.cfg['sample_rate'] * self.cfg['window_stride'])
-        dfft = librosa.stft(audio.samples, n_fft=n_fft, hop_length=hop_length, win_length=n_fft, window=self.window)
+        dfft = librosa.stft(audio_segment.samples, n_fft=n_fft, hop_length=hop_length, win_length=n_fft, window=self.window)
         spect, _ = librosa.magphase(dfft)
         spect = torch.FloatTensor(spect).log1p()
         if self.cfg['normalize']:

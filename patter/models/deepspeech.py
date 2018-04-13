@@ -30,7 +30,6 @@ supported_rnns_inv = dict((v, k) for k, v in supported_rnns.items())
 class DeepSpeechOptim(SpeechModel):
     def __init__(self, cfg):
         super(DeepSpeechOptim, self).__init__(cfg)
-        self.input_cfg = cfg['input']
         self.loss_func = None
 
         # Add a `\u00a0` (no break space) label as a "BLANK" symbol for CTC

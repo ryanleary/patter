@@ -5,6 +5,7 @@ class SpeechModel(nn.Module):
     def __init__(self, cfg):
         super(SpeechModel, self).__init__()
         self._config = cfg
+        self.input_cfg = cfg['input']
 
     def forward(self, _input, lengths):
         raise NotImplementedError
