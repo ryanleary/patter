@@ -1,0 +1,21 @@
+id = "expt-name"
+cuda = true
+
+[output]
+model_path = "/path/to/best/model.pt"
+log_path = "/path/to/tensorboard/logs"
+
+[trainer]
+epochs = 20
+batch_size = 32
+num_workers = 4
+max_norm = 400
+
+[trainer.optimizer]
+optimizer = "sgd"
+lr = 5e-4
+momentum = 0.9
+nesterov = true
+
+[trainer.scheduler]
+anneal = 0.90909

@@ -1,0 +1,49 @@
+min_duration = 1.0
+max_duration = 17.0
+
+
+[[dataset]]
+name = "train"
+manifest = "/path/to/corpora/train.json"
+augment = true
+
+[[dataset]]
+name = "val"
+manifest = "/path/to/corpora/val.json"
+augment = false
+
+
+[[augmentation]]
+type = "noise"
+prob = 0.0
+[augmentation.config]
+manifest = "/path/to/noise_manifest.json"
+min_snr_db = 3
+max_snr_db = 35
+
+[[augmentation]]
+type = "impulse"
+prob = 0.0
+[augmentation.config]
+manifest = "/path/to/impulse_manifest.json"
+
+[[augmentation]]
+type = "speed"
+prob = 1.0
+[augmentation.config]
+min_speed_rate = 0.95
+max_speed_rate = 1.05
+
+[[augmentation]]
+type = "shift"
+prob = 1.0
+[augmentation.config]
+min_shift_ms = -5
+max_shift_ms = 5
+
+[[augmentation]]
+type = "gain"
+prob = 1.0
+[augmentation.config]
+min_gain_dbfs = -10
+max_gain_dbfs = 10

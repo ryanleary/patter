@@ -1,0 +1,19 @@
+cuda = false
+batch_size = 10
+
+model_path = "/path/to/trained/model.pt"
+language = "en-US"
+
+[decoder]
+algorithm = "beam" # or "greedy"
+workers = 4
+
+[decoder.beam]
+beam_width = 100
+cutoff_top_n = 40
+cutoff_prob = 1.0
+
+[decoder.beam.lm]
+lm_path = "/path/to/language/model.arpa"
+alpha = 1.0
+beta = 1.0

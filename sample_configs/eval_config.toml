@@ -1,0 +1,21 @@
+cuda = true
+batch_size = 20
+num_workers = 4
+
+[[dataset]]
+name = "test"
+manifest = "/path/to/corpora/test.jl"
+
+[decoder]
+algorithm = "beam" # or "greedy"
+workers = 4
+
+[decoder.beam]
+beam_width = 30
+cutoff_top_n = 40
+cutoff_prob = 1.0
+
+[decoder.beam.lm]
+lm_path = "/path/to/language/model.arpa"
+alpha = 1.0
+beta = 1.0

@@ -1,0 +1,51 @@
+model = "DeepSpeechOptim"
+
+[input]
+type = "stft"
+normalize = true
+sample_rate = 16000
+window_size = 0.02
+window_stride = 0.01
+window = "hamming"
+
+[[cnn]]
+filters = 32
+kernel = [41, 11]
+stride = [2, 2]
+padding = [0, 10]
+batch_norm = true
+activation = "hardtanh"
+activation_params = [0, 20]
+
+[[cnn]]
+filters = 32
+kernel = [21, 11]
+stride = [2, 1]
+padding = [0, 2]
+batch_norm = true
+activation = "hardtanh"
+activation_params = [0, 20]
+
+[rnn]
+type = "lstm"
+bidirectional = true
+size = 512
+layers = 4
+batch_norm = true
+
+# DS3 suggests using weight noise instead of batch norm, only set when rnn batch_norm = false
+#[rnn.noise]
+#mean=0.0
+#std=0.001
+
+# only used/necessary when rnn bidirectional = false
+#[context]
+#context = 20
+#activation = "swish"
+
+[labels]
+labels = [
+  "'", "A", "B", "C", "D", "E", "F", "G", "H",
+  "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+  "R", "S", "T", "U", "V", "W", "X", "Y", "Z", " ",
+]
