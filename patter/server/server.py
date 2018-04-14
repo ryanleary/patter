@@ -23,6 +23,8 @@ class SpeechServicer(speech_pb2_grpc.SpeechServicer):
 
         if self._use_cuda:
             self._model = self._model.cuda()
+        self._model.eval()
+
 
     def _raw_data_to_samples(self, data, sample_rate=16000, encoding=None):
         # TODO: support other encodings
@@ -34,7 +36,7 @@ class SpeechServicer(speech_pb2_grpc.SpeechServicer):
         return signal
 
     def Recognize(self, request, context):
-        print("Handling stream request...")
+        print("Handling stream request.")
         config = request.config
 
         # check audio format (sample rate, encoding) to convert if necessary
@@ -43,19 +45,34 @@ class SpeechServicer(speech_pb2_grpc.SpeechServicer):
             context.set_details('Requested unsupported language')
             return
 
+        max_alternatives = max(min(config.max_alternatives, 30), 1)
+
         # get samples
         samples = self._raw_data_to_samples(request.audio.content, sample_rate=config.sample_rate_hertz, encoding=config.encoding)
         segment = AudioSegment(samples, config.sample_rate_hertz, target_sr=self._model.input_cfg['sample_rate'])
+
+        # featurize
         features = self._featurizer.process_segment(segment)
-
         features = features.unsqueeze(0).unsqueeze(0)
-        output, output_len = self._model(torch.autograd.Variable(features, requires_grad=False),
-                                         torch.autograd.Variable(torch.IntTensor([[features.size(3)]]), requires_grad=False))
 
-        decoded_output, _ = self._decoder.decode(output.transpose(0, 1).data, output_len.data)
+        # run model
+        output, output_len = self._model(torch.autograd.Variable(features, requires_grad=False),
+                                         torch.autograd.Variable(torch.IntTensor([features.size(3)]), requires_grad=False))
+        output = output.transpose(0, 1)
+
+        # decode
+        decoded_output, offsets, scores = self._decoder.decode(output.data, output_len.data, num_results=max_alternatives)
+
+        # build output message
         alternatives = []
-        for path in decoded_output[0]:
-            alternatives.append(speech_pb2.SpeechRecognitionAlternative(transcript=path, confidence=1.0))
+        for idx in range(min(max_alternatives, len(decoded_output[0]))):
+            transcript = decoded_output[0][idx].strip().lower()
+            transcript_words = transcript.split()
+            words = []
+            if idx == 0:
+                for w in transcript_words:
+                    words.append(speech_pb2.WordInfo(word=w))
+            alternatives.append(speech_pb2.SpeechRecognitionAlternative(transcript=transcript, confidence=scores[0][idx], words=words))
         # may be multiple results if there are multiple chunks created
         results = [speech_pb2.SpeechRecognitionResult(alternatives=alternatives)]
         response = speech_pb2.RecognizeResponse(results=results)
@@ -70,6 +87,3 @@ class SpeechServicer(speech_pb2_grpc.SpeechServicer):
         except ValidationError as err:
             raise err
         return cls(cfg.data['model_path'], cfg.data['decoder'], language=cfg.data['language'], cuda=cfg.data['cuda'])
-
-
-

@@ -15,10 +15,17 @@ class BeamCTCDecoder(Decoder):
 
     @classmethod
     def from_config(cls, cfg, labels):
-        return cls(labels, lm_path=cfg['beam_config']['lm']['lm_path'], alpha=cfg['beam_config']['lm']['alpha'],
-                   beta=cfg['beam_config']['lm']['beta'], cutoff_top_n=cfg['beam_config']['cutoff_top_n'],
-                   cutoff_prob=cfg['beam_config']['cutoff_prob'], beam_width=cfg['beam_config']['beam_width'],
-                   num_processes=cfg['num_workers'])
+        beam_cfg = {
+            "cutoff_top_n": cfg['beam_config']['cutoff_top_n'],
+            "cutoff_prob": cfg['beam_config']['cutoff_prob'],
+            "beam_width": cfg['beam_config']['beam_width'],
+            "num_processes": cfg['num_workers']
+        }
+        if 'lm' in cfg['beam_config']:
+            beam_cfg["lm_path"] = cfg['beam_config']['lm']['lm_path']
+            beam_cfg["alpha"] = cfg['beam_config']['lm']['alpha']
+            beam_cfg["beta"] = beta=cfg['beam_config']['lm']['beta']
+        return cls(labels, **beam_cfg)
 
     def convert_to_strings(self, out, seq_len):
         results = []
@@ -48,7 +55,7 @@ class BeamCTCDecoder(Decoder):
             results.append(utterances)
         return results
 
-    def decode(self, probs, sizes=None):
+    def decode(self, probs, sizes=None, num_results=1):
         """
         Decodes probability output using ctcdecode package.
         Arguments:
@@ -58,8 +65,9 @@ class BeamCTCDecoder(Decoder):
         Returns:
             string: sequences of the model's best guess for the transcription
         """
+        sizes = sizes.squeeze(0) if sizes is not None else None
         out, scores, offsets, seq_lens = self._decoder.decode(probs.cpu(), sizes)
 
         strings = self.convert_to_strings(out, seq_lens)
         offsets = self.convert_tensor(offsets, seq_lens)
-        return strings, offsets
+        return strings, offsets, scores

@@ -42,7 +42,7 @@ class Decoder(object):
         s1, s2, = s1.replace(' ', ''), s2.replace(' ', '')
         return Lev.distance(s1, s2)
 
-    def decode(self, probs, sizes=None):
+    def decode(self, probs, sizes=None, num_results=1):
         """
         Given a matrix of character probabilities, returns the decoder's
         best guess of the transcription

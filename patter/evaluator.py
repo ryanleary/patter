@@ -96,7 +96,7 @@ def validate_batch(i, data, model, decoder, target_decoder, verbose=False, losse
         losses.update(avg_loss, feat.size(0))
 
     # do the decode
-    decoded_output, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)
+    decoded_output, _, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)
     target_strings = target_decoder.convert_to_strings(split_targets(target.data, target_len.data))
 
     example = (decoded_output[0][0], target_strings[0][0])

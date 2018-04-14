@@ -23,7 +23,8 @@ def transcribe(stream_file):
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.LINEAR16,
         sample_rate_hertz=16000,
-        language_code='en-US')
+        language_code='en-US',
+        max_alternatives=5)
 
     request = speech.RecognizeRequest(
         config=config,
@@ -46,7 +47,8 @@ def transcribe_streaming(stream_file):
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.LINEAR16,
         sample_rate_hertz=16000,
-        language_code='en-US')
+        language_code='en-US',
+        max_alternatives=3)
     streaming_config = speech.StreamingRecognizeRequest(streaming_config=speech.StreamingRecognitionConfig(config=config))
     # In practice, stream should be a generator yielding chunks of audio data.
     stream = [streaming_config] +  [speech.StreamingRecognizeRequest(audio_content=content[i:i+4]) for i in range(0,len(content),4)]

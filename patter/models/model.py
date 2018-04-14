@@ -16,6 +16,9 @@ class SpeechModel(nn.Module):
     def init_weights(self):
         pass
 
+    def get_output_offset_time_in_ms(self, offsets):
+        raise NotImplementedError
+
     @property
     def is_cuda(self) -> bool:
         return next(self.parameters()).is_cuda

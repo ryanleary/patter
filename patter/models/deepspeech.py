@@ -123,6 +123,13 @@ class DeepSpeechOptim(SpeechModel):
             if type(m) == nn.modules.conv.Conv2d:
                 seq_len = ((seq_len + 2 * m.padding[1] - m.dilation[1] * (m.kernel_size[1] - 1) - 1) / m.stride[1] + 1)
         return seq_len.int().unsqueeze(0)
+    #
+    # def get_output_offset_time_in_ms(self, offsets):
+    #     seq_len = 0
+    #     for m in self.conv:
+    #         if type(m) == nn.modules.conv.Conv2d:
+    #             seq_len = ((seq_len + 2 * m.padding[1] - m.dilation[1] * (m.kernel_size[1] - 1) - 1) / m.stride[1] + 1)
+    #     offsets = (1/seq_len) * offsets *
 
     @staticmethod
     def _get_cnn_layers(cfg):
