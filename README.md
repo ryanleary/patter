@@ -18,6 +18,7 @@ speech-to-text framework in PyTorch with initial support for the DeepSpeech2 arc
   - noise addition (at random SNR)
   - impulse response perturbations
 - Tensorboard integration
+- [gRPC](https://github.com/grpc/grpc)-based model server
 
 ## Installation
 Manual installation of two dependencies is required:
