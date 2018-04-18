@@ -1,6 +1,9 @@
 import grpc
 import torch
 import numpy as np
+import collections
+import time
+import threading
 from marshmallow.exceptions import ValidationError
 
 from . import speech_pb2, speech_pb2_grpc
@@ -25,7 +28,6 @@ class SpeechServicer(speech_pb2_grpc.SpeechServicer):
             self._model = self._model.cuda()
         self._model.eval()
 
-
     def _raw_data_to_samples(self, data, sample_rate=16000, encoding=None):
         # TODO: support other encodings
         if sample_rate == 16000 and encoding == speech_pb2.RecognitionConfig.LINEAR16:
@@ -36,7 +38,7 @@ class SpeechServicer(speech_pb2_grpc.SpeechServicer):
         return signal
 
     def Recognize(self, request, context):
-        print("Handling stream request.")
+        print("Handling batch request.")
         config = request.config
 
         # check audio format (sample rate, encoding) to convert if necessary
@@ -65,8 +67,13 @@ class SpeechServicer(speech_pb2_grpc.SpeechServicer):
 
         # build output message
         alternatives = []
+        transcripts = set([])
         for idx in range(min(max_alternatives, len(decoded_output[0]))):
             transcript = decoded_output[0][idx].strip().lower()
+            if transcript not in transcripts:
+                transcripts.add(transcript)
+            else:
+                continue
             transcript_words = transcript.split()
             words = []
             if idx == 0:
@@ -77,6 +84,73 @@ class SpeechServicer(speech_pb2_grpc.SpeechServicer):
         results = [speech_pb2.SpeechRecognitionResult(alternatives=alternatives)]
         response = speech_pb2.RecognizeResponse(results=results)
         return response
+
+    def StreamingRecognize(self, request_iterator, context):
+        print("Handling stream request...")
+        config_wrapper = request_iterator.next()
+        if not config_wrapper.HasField("streaming_config"):
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details('First StreamingRequest must be a configuration request')
+            return
+            # return an error
+        stream_config = config_wrapper.streaming_config
+
+        # check audio format (sample rate, encoding) to convert if necessary
+        if stream_config.config.language_code != self._language:
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            context.set_details('Requested unsupported language')
+            return
+
+        sample_buffer = collections.deque()
+        done = False
+        last_incoming = time.time()
+
+        def read_incoming():
+            try:
+                while 1:
+                    received = next(request_iterator)
+                    samples = self._raw_data_to_samples(received.audio_content, sample_rate=stream_config.config.sample_rate_hertz, encoding=stream_config.config.encoding)
+                    sample_buffer.extend(samples)
+                    last_incoming = time.time()
+            except StopIteration:
+                print("reached end")
+                return
+            except ValueError:
+                context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+                context.set_details('Unable to handle requested audio type')
+                raise ValueError('Unable to handle requested audio type')
+
+        thread = threading.Thread(target=read_incoming)
+        thread.daemon = True
+        thread.start()
+
+        last_check = time.time()
+        full_transcript = ""
+        hidden = None
+        result = None
+        last_buffer_size = -1
+        while 1:
+            stream_done = time.time()-last_incoming > self._flush_time
+            if len(sample_buffer) > self._min_buffer or (time.time()-last_check >= self._flush_time and len(sample_buffer) > self._min_buffer):
+                last_check = time.time()
+                signal = self._get_np_from_deque(sample_buffer, size=min(len(sample_buffer), self._max_buffer), reserve=int(0.4*self._model_sample_rate))
+                spect = self._parser.parse_audio_data(signal).contiguous()
+                spect = spect.view(1, 1, spect.size(0), spect.size(1))
+                out, _ = self._model(torch.autograd.Variable(spect, volatile=True), hidden)
+                out = out.transpose(0, 1)  # TxNxH
+                decoded_output, _, _, _ = self._decoder.decode(out.data[:-19,:,:])
+                full_transcript += decoded_output[0][0]
+                alt = speech_pb2.SpeechRecognitionAlternative(transcript=full_transcript)
+                result = speech_pb2.StreamingRecognitionResult(alternatives=[alt], is_final=done)
+                out = speech_pb2.StreamingRecognizeResponse(results=[result])
+                # if stream_done:
+                #     return out
+                yield out
+            else:
+                last_check = time.time()
+                time.sleep(0.01)
+
+
 
     @classmethod
     def from_config(cls, server_config):

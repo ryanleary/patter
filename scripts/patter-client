@@ -34,6 +34,7 @@ def transcribe(stream_file):
     response = client.Recognize(request)
     print(response)
 
+
 # [START def_transcribe_streaming]
 def transcribe_streaming(stream_file):
     """Streams transcription of the given audio file."""
@@ -51,12 +52,11 @@ def transcribe_streaming(stream_file):
         max_alternatives=3)
     streaming_config = speech.StreamingRecognizeRequest(streaming_config=speech.StreamingRecognitionConfig(config=config))
     # In practice, stream should be a generator yielding chunks of audio data.
-    stream = [streaming_config] +  [speech.StreamingRecognizeRequest(audio_content=content[i:i+4]) for i in range(0,len(content),4)]
+    stream = [streaming_config] + [speech.StreamingRecognizeRequest(audio_content=content[i:i+4]) for i in range(0,len(content),4)]
     requests = (chunk for chunk in stream)
 
     print(content[0])
     print(content[len(content)-1])
-
 
     # streaming_recognize returns a generator.
     # [START migration_streaming_response]
@@ -80,12 +80,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('wav_file', help='File to stream to the API')
+    parser.add_argument('--wav-file', default=None, help='File to stream to the API')
     parser.add_argument("--stream", action="store_true", help='if true, send streaming')
     args = parser.parse_args()
-    if args.stream:
-        transcribe_streaming(args.wav_file)
+
+    if args.wav_file is None:
+        # stream from microphone -- not currently supported
+        print("Streaming from microphone...")
+        print("Not yet supported. Exiting.")
     else:
-        start = time.time()
-        transcribe(args.wav_file)
-        print("Request completed in {0:.4f} seconds".format(time.time()-start))
+        if args.stream:
+            transcribe_streaming(args.wav_file)
+        else:
+            start = time.time()
+            transcribe(args.wav_file)
+            print("Request completed in {0:.4f} seconds".format(time.time()-start))

@@ -19,6 +19,11 @@ class SpeechStub(object):
         request_serializer=speech__pb2.RecognizeRequest.SerializeToString,
         response_deserializer=speech__pb2.RecognizeResponse.FromString,
         )
+    self.StreamingRecognize = channel.stream_stream(
+        '/parlance.patter.speech.v1.Speech/StreamingRecognize',
+        request_serializer=speech__pb2.StreamingRecognizeRequest.SerializeToString,
+        response_deserializer=speech__pb2.StreamingRecognizeResponse.FromString,
+        )
 
 
 class SpeechServicer(object):
@@ -32,6 +37,13 @@ class SpeechServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def StreamingRecognize(self, request_iterator, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_SpeechServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -39,6 +51,11 @@ def add_SpeechServicer_to_server(servicer, server):
           servicer.Recognize,
           request_deserializer=speech__pb2.RecognizeRequest.FromString,
           response_serializer=speech__pb2.RecognizeResponse.SerializeToString,
+      ),
+      'StreamingRecognize': grpc.stream_stream_rpc_method_handler(
+          servicer.StreamingRecognize,
+          request_deserializer=speech__pb2.StreamingRecognizeRequest.FromString,
+          response_serializer=speech__pb2.StreamingRecognizeResponse.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(

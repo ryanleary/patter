@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='speech.proto',
   package='parlance.patter.speech.v1',
   syntax='proto3',
-  serialized_pb=_b('\n\x0cspeech.proto\x12\x19parlance.patter.speech.v1\x1a\x1egoogle/protobuf/duration.proto\"\x8c\x01\n\x10RecognizeRequest\x12<\n\x06\x63onfig\x18\x01 \x01(\x0b\x32,.parlance.patter.speech.v1.RecognitionConfig\x12:\n\x05\x61udio\x18\x02 \x01(\x0b\x32+.parlance.patter.speech.v1.RecognitionAudio\"\x92\x02\n\x11RecognitionConfig\x12L\n\x08\x65ncoding\x18\x01 \x01(\x0e\x32:.parlance.patter.speech.v1.RecognitionConfig.AudioEncoding\x12\x19\n\x11sample_rate_hertz\x18\x02 \x01(\x05\x12\x15\n\rlanguage_code\x18\x03 \x01(\t\x12\x18\n\x10max_alternatives\x18\x04 \x01(\x05\x12 \n\x18\x65nable_word_time_offsets\x18\x08 \x01(\x08\"A\n\rAudioEncoding\x12\x18\n\x14\x45NCODING_UNSPECIFIED\x10\x00\x12\x0c\n\x08LINEAR16\x10\x01\x12\x08\n\x04\x46LAC\x10\x02\"D\n\x10RecognitionAudio\x12\x11\n\x07\x63ontent\x18\x01 \x01(\x0cH\x00\x12\r\n\x03uri\x18\x02 \x01(\tH\x00\x42\x0e\n\x0c\x61udio_source\"X\n\x11RecognizeResponse\x12\x43\n\x07results\x18\x02 \x03(\x0b\x32\x32.parlance.patter.speech.v1.SpeechRecognitionResult\"h\n\x17SpeechRecognitionResult\x12M\n\x0c\x61lternatives\x18\x01 \x03(\x0b\x32\x37.parlance.patter.speech.v1.SpeechRecognitionAlternative\"z\n\x1cSpeechRecognitionAlternative\x12\x12\n\ntranscript\x18\x01 \x01(\t\x12\x12\n\nconfidence\x18\x02 \x01(\x02\x12\x32\n\x05words\x18\x03 \x03(\x0b\x32#.parlance.patter.speech.v1.WordInfo\"t\n\x08WordInfo\x12-\n\nstart_time\x18\x01 \x01(\x0b\x32\x19.google.protobuf.Duration\x12+\n\x08\x65nd_time\x18\x02 \x01(\x0b\x32\x19.google.protobuf.Duration\x12\x0c\n\x04word\x18\x03 \x01(\t2p\n\x06Speech\x12\x66\n\tRecognize\x12+.parlance.patter.speech.v1.RecognizeRequest\x1a,.parlance.patter.speech.v1.RecognizeResponseb\x06proto3')
+  serialized_pb=_b('\n\x0cspeech.proto\x12\x19parlance.patter.speech.v1\x1a\x1egoogle/protobuf/duration.proto\"\x8c\x01\n\x10RecognizeRequest\x12<\n\x06\x63onfig\x18\x01 \x01(\x0b\x32,.parlance.patter.speech.v1.RecognitionConfig\x12:\n\x05\x61udio\x18\x02 \x01(\x0b\x32+.parlance.patter.speech.v1.RecognitionAudio\"\x9c\x01\n\x19StreamingRecognizeRequest\x12Q\n\x10streaming_config\x18\x01 \x01(\x0b\x32\x35.parlance.patter.speech.v1.StreamingRecognitionConfigH\x00\x12\x17\n\raudio_content\x18\x02 \x01(\x0cH\x00\x42\x13\n\x11streaming_request\"\x8d\x01\n\x1aStreamingRecognitionConfig\x12<\n\x06\x63onfig\x18\x01 \x01(\x0b\x32,.parlance.patter.speech.v1.RecognitionConfig\x12\x18\n\x10single_utterance\x18\x02 \x01(\x08\x12\x17\n\x0finterim_results\x18\x03 \x01(\x08\"\x92\x02\n\x11RecognitionConfig\x12L\n\x08\x65ncoding\x18\x01 \x01(\x0e\x32:.parlance.patter.speech.v1.RecognitionConfig.AudioEncoding\x12\x19\n\x11sample_rate_hertz\x18\x02 \x01(\x05\x12\x15\n\rlanguage_code\x18\x03 \x01(\t\x12\x18\n\x10max_alternatives\x18\x04 \x01(\x05\x12 \n\x18\x65nable_word_time_offsets\x18\x08 \x01(\x08\"A\n\rAudioEncoding\x12\x18\n\x14\x45NCODING_UNSPECIFIED\x10\x00\x12\x0c\n\x08LINEAR16\x10\x01\x12\x08\n\x04\x46LAC\x10\x02\"D\n\x10RecognitionAudio\x12\x11\n\x07\x63ontent\x18\x01 \x01(\x0cH\x00\x12\r\n\x03uri\x18\x02 \x01(\tH\x00\x42\x0e\n\x0c\x61udio_source\"X\n\x11RecognizeResponse\x12\x43\n\x07results\x18\x02 \x03(\x0b\x32\x32.parlance.patter.speech.v1.SpeechRecognitionResult\"\x94\x02\n\x1aStreamingRecognizeResponse\x12\x46\n\x07results\x18\x02 \x03(\x0b\x32\x35.parlance.patter.speech.v1.StreamingRecognitionResult\x12`\n\x11speech_event_type\x18\x04 \x01(\x0e\x32\x45.parlance.patter.speech.v1.StreamingRecognizeResponse.SpeechEventType\"L\n\x0fSpeechEventType\x12\x1c\n\x18SPEECH_EVENT_UNSPECIFIED\x10\x00\x12\x1b\n\x17\x45ND_OF_SINGLE_UTTERANCE\x10\x01\"\x90\x01\n\x1aStreamingRecognitionResult\x12M\n\x0c\x61lternatives\x18\x01 \x03(\x0b\x32\x37.parlance.patter.speech.v1.SpeechRecognitionAlternative\x12\x10\n\x08is_final\x18\x02 \x01(\x08\x12\x11\n\tstability\x18\x03 \x01(\x02\"h\n\x17SpeechRecognitionResult\x12M\n\x0c\x61lternatives\x18\x01 \x03(\x0b\x32\x37.parlance.patter.speech.v1.SpeechRecognitionAlternative\"z\n\x1cSpeechRecognitionAlternative\x12\x12\n\ntranscript\x18\x01 \x01(\t\x12\x12\n\nconfidence\x18\x02 \x01(\x02\x12\x32\n\x05words\x18\x03 \x03(\x0b\x32#.parlance.patter.speech.v1.WordInfo\"t\n\x08WordInfo\x12-\n\nstart_time\x18\x01 \x01(\x0b\x32\x19.google.protobuf.Duration\x12+\n\x08\x65nd_time\x18\x02 \x01(\x0b\x32\x19.google.protobuf.Duration\x12\x0c\n\x04word\x18\x03 \x01(\t2\xf8\x01\n\x06Speech\x12\x66\n\tRecognize\x12+.parlance.patter.speech.v1.RecognizeRequest\x1a,.parlance.patter.speech.v1.RecognizeResponse\x12\x85\x01\n\x12StreamingRecognize\x12\x34.parlance.patter.speech.v1.StreamingRecognizeRequest\x1a\x35.parlance.patter.speech.v1.StreamingRecognizeResponse(\x01\x30\x01\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_duration__pb2.DESCRIPTOR,])
 
@@ -47,10 +47,32 @@ _RECOGNITIONCONFIG_AUDIOENCODING = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=428,
-  serialized_end=493,
+  serialized_start=731,
+  serialized_end=796,
 )
 _sym_db.RegisterEnumDescriptor(_RECOGNITIONCONFIG_AUDIOENCODING)
+
+_STREAMINGRECOGNIZERESPONSE_SPEECHEVENTTYPE = _descriptor.EnumDescriptor(
+  name='SpeechEventType',
+  full_name='parlance.patter.speech.v1.StreamingRecognizeResponse.SpeechEventType',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='SPEECH_EVENT_UNSPECIFIED', index=0, number=0,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='END_OF_SINGLE_UTTERANCE', index=1, number=1,
+      options=None,
+      type=None),
+  ],
+  containing_type=None,
+  options=None,
+  serialized_start=1159,
+  serialized_end=1235,
+)
+_sym_db.RegisterEnumDescriptor(_STREAMINGRECOGNIZERESPONSE_SPEECHEVENTTYPE)
 
 
 _RECOGNIZEREQUEST = _descriptor.Descriptor(
@@ -88,6 +110,92 @@ _RECOGNIZEREQUEST = _descriptor.Descriptor(
   ],
   serialized_start=76,
   serialized_end=216,
+)
+
+
+_STREAMINGRECOGNIZEREQUEST = _descriptor.Descriptor(
+  name='StreamingRecognizeRequest',
+  full_name='parlance.patter.speech.v1.StreamingRecognizeRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='streaming_config', full_name='parlance.patter.speech.v1.StreamingRecognizeRequest.streaming_config', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='audio_content', full_name='parlance.patter.speech.v1.StreamingRecognizeRequest.audio_content', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='streaming_request', full_name='parlance.patter.speech.v1.StreamingRecognizeRequest.streaming_request',
+      index=0, containing_type=None, fields=[]),
+  ],
+  serialized_start=219,
+  serialized_end=375,
+)
+
+
+_STREAMINGRECOGNITIONCONFIG = _descriptor.Descriptor(
+  name='StreamingRecognitionConfig',
+  full_name='parlance.patter.speech.v1.StreamingRecognitionConfig',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='config', full_name='parlance.patter.speech.v1.StreamingRecognitionConfig.config', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='single_utterance', full_name='parlance.patter.speech.v1.StreamingRecognitionConfig.single_utterance', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='interim_results', full_name='parlance.patter.speech.v1.StreamingRecognitionConfig.interim_results', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=378,
+  serialized_end=519,
 )
 
 
@@ -146,8 +254,8 @@ _RECOGNITIONCONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=219,
-  serialized_end=493,
+  serialized_start=522,
+  serialized_end=796,
 )
 
 
@@ -187,8 +295,8 @@ _RECOGNITIONAUDIO = _descriptor.Descriptor(
       name='audio_source', full_name='parlance.patter.speech.v1.RecognitionAudio.audio_source',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=495,
-  serialized_end=563,
+  serialized_start=798,
+  serialized_end=866,
 )
 
 
@@ -218,8 +326,92 @@ _RECOGNIZERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=565,
-  serialized_end=653,
+  serialized_start=868,
+  serialized_end=956,
+)
+
+
+_STREAMINGRECOGNIZERESPONSE = _descriptor.Descriptor(
+  name='StreamingRecognizeResponse',
+  full_name='parlance.patter.speech.v1.StreamingRecognizeResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='results', full_name='parlance.patter.speech.v1.StreamingRecognizeResponse.results', index=0,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='speech_event_type', full_name='parlance.patter.speech.v1.StreamingRecognizeResponse.speech_event_type', index=1,
+      number=4, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _STREAMINGRECOGNIZERESPONSE_SPEECHEVENTTYPE,
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=959,
+  serialized_end=1235,
+)
+
+
+_STREAMINGRECOGNITIONRESULT = _descriptor.Descriptor(
+  name='StreamingRecognitionResult',
+  full_name='parlance.patter.speech.v1.StreamingRecognitionResult',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='alternatives', full_name='parlance.patter.speech.v1.StreamingRecognitionResult.alternatives', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_final', full_name='parlance.patter.speech.v1.StreamingRecognitionResult.is_final', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='stability', full_name='parlance.patter.speech.v1.StreamingRecognitionResult.stability', index=2,
+      number=3, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1238,
+  serialized_end=1382,
 )
 
 
@@ -249,8 +441,8 @@ _SPEECHRECOGNITIONRESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=655,
-  serialized_end=759,
+  serialized_start=1384,
+  serialized_end=1488,
 )
 
 
@@ -294,8 +486,8 @@ _SPEECHRECOGNITIONALTERNATIVE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=761,
-  serialized_end=883,
+  serialized_start=1490,
+  serialized_end=1612,
 )
 
 
@@ -339,12 +531,20 @@ _WORDINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=885,
-  serialized_end=1001,
+  serialized_start=1614,
+  serialized_end=1730,
 )
 
 _RECOGNIZEREQUEST.fields_by_name['config'].message_type = _RECOGNITIONCONFIG
 _RECOGNIZEREQUEST.fields_by_name['audio'].message_type = _RECOGNITIONAUDIO
+_STREAMINGRECOGNIZEREQUEST.fields_by_name['streaming_config'].message_type = _STREAMINGRECOGNITIONCONFIG
+_STREAMINGRECOGNIZEREQUEST.oneofs_by_name['streaming_request'].fields.append(
+  _STREAMINGRECOGNIZEREQUEST.fields_by_name['streaming_config'])
+_STREAMINGRECOGNIZEREQUEST.fields_by_name['streaming_config'].containing_oneof = _STREAMINGRECOGNIZEREQUEST.oneofs_by_name['streaming_request']
+_STREAMINGRECOGNIZEREQUEST.oneofs_by_name['streaming_request'].fields.append(
+  _STREAMINGRECOGNIZEREQUEST.fields_by_name['audio_content'])
+_STREAMINGRECOGNIZEREQUEST.fields_by_name['audio_content'].containing_oneof = _STREAMINGRECOGNIZEREQUEST.oneofs_by_name['streaming_request']
+_STREAMINGRECOGNITIONCONFIG.fields_by_name['config'].message_type = _RECOGNITIONCONFIG
 _RECOGNITIONCONFIG.fields_by_name['encoding'].enum_type = _RECOGNITIONCONFIG_AUDIOENCODING
 _RECOGNITIONCONFIG_AUDIOENCODING.containing_type = _RECOGNITIONCONFIG
 _RECOGNITIONAUDIO.oneofs_by_name['audio_source'].fields.append(
@@ -354,14 +554,22 @@ _RECOGNITIONAUDIO.oneofs_by_name['audio_source'].fields.append(
   _RECOGNITIONAUDIO.fields_by_name['uri'])
 _RECOGNITIONAUDIO.fields_by_name['uri'].containing_oneof = _RECOGNITIONAUDIO.oneofs_by_name['audio_source']
 _RECOGNIZERESPONSE.fields_by_name['results'].message_type = _SPEECHRECOGNITIONRESULT
+_STREAMINGRECOGNIZERESPONSE.fields_by_name['results'].message_type = _STREAMINGRECOGNITIONRESULT
+_STREAMINGRECOGNIZERESPONSE.fields_by_name['speech_event_type'].enum_type = _STREAMINGRECOGNIZERESPONSE_SPEECHEVENTTYPE
+_STREAMINGRECOGNIZERESPONSE_SPEECHEVENTTYPE.containing_type = _STREAMINGRECOGNIZERESPONSE
+_STREAMINGRECOGNITIONRESULT.fields_by_name['alternatives'].message_type = _SPEECHRECOGNITIONALTERNATIVE
 _SPEECHRECOGNITIONRESULT.fields_by_name['alternatives'].message_type = _SPEECHRECOGNITIONALTERNATIVE
 _SPEECHRECOGNITIONALTERNATIVE.fields_by_name['words'].message_type = _WORDINFO
 _WORDINFO.fields_by_name['start_time'].message_type = google_dot_protobuf_dot_duration__pb2._DURATION
 _WORDINFO.fields_by_name['end_time'].message_type = google_dot_protobuf_dot_duration__pb2._DURATION
 DESCRIPTOR.message_types_by_name['RecognizeRequest'] = _RECOGNIZEREQUEST
+DESCRIPTOR.message_types_by_name['StreamingRecognizeRequest'] = _STREAMINGRECOGNIZEREQUEST
+DESCRIPTOR.message_types_by_name['StreamingRecognitionConfig'] = _STREAMINGRECOGNITIONCONFIG
 DESCRIPTOR.message_types_by_name['RecognitionConfig'] = _RECOGNITIONCONFIG
 DESCRIPTOR.message_types_by_name['RecognitionAudio'] = _RECOGNITIONAUDIO
 DESCRIPTOR.message_types_by_name['RecognizeResponse'] = _RECOGNIZERESPONSE
+DESCRIPTOR.message_types_by_name['StreamingRecognizeResponse'] = _STREAMINGRECOGNIZERESPONSE
+DESCRIPTOR.message_types_by_name['StreamingRecognitionResult'] = _STREAMINGRECOGNITIONRESULT
 DESCRIPTOR.message_types_by_name['SpeechRecognitionResult'] = _SPEECHRECOGNITIONRESULT
 DESCRIPTOR.message_types_by_name['SpeechRecognitionAlternative'] = _SPEECHRECOGNITIONALTERNATIVE
 DESCRIPTOR.message_types_by_name['WordInfo'] = _WORDINFO
@@ -373,6 +581,20 @@ RecognizeRequest = _reflection.GeneratedProtocolMessageType('RecognizeRequest', 
   # @@protoc_insertion_point(class_scope:parlance.patter.speech.v1.RecognizeRequest)
   ))
 _sym_db.RegisterMessage(RecognizeRequest)
+
+StreamingRecognizeRequest = _reflection.GeneratedProtocolMessageType('StreamingRecognizeRequest', (_message.Message,), dict(
+  DESCRIPTOR = _STREAMINGRECOGNIZEREQUEST,
+  __module__ = 'speech_pb2'
+  # @@protoc_insertion_point(class_scope:parlance.patter.speech.v1.StreamingRecognizeRequest)
+  ))
+_sym_db.RegisterMessage(StreamingRecognizeRequest)
+
+StreamingRecognitionConfig = _reflection.GeneratedProtocolMessageType('StreamingRecognitionConfig', (_message.Message,), dict(
+  DESCRIPTOR = _STREAMINGRECOGNITIONCONFIG,
+  __module__ = 'speech_pb2'
+  # @@protoc_insertion_point(class_scope:parlance.patter.speech.v1.StreamingRecognitionConfig)
+  ))
+_sym_db.RegisterMessage(StreamingRecognitionConfig)
 
 RecognitionConfig = _reflection.GeneratedProtocolMessageType('RecognitionConfig', (_message.Message,), dict(
   DESCRIPTOR = _RECOGNITIONCONFIG,
@@ -394,6 +616,20 @@ RecognizeResponse = _reflection.GeneratedProtocolMessageType('RecognizeResponse'
   # @@protoc_insertion_point(class_scope:parlance.patter.speech.v1.RecognizeResponse)
   ))
 _sym_db.RegisterMessage(RecognizeResponse)
+
+StreamingRecognizeResponse = _reflection.GeneratedProtocolMessageType('StreamingRecognizeResponse', (_message.Message,), dict(
+  DESCRIPTOR = _STREAMINGRECOGNIZERESPONSE,
+  __module__ = 'speech_pb2'
+  # @@protoc_insertion_point(class_scope:parlance.patter.speech.v1.StreamingRecognizeResponse)
+  ))
+_sym_db.RegisterMessage(StreamingRecognizeResponse)
+
+StreamingRecognitionResult = _reflection.GeneratedProtocolMessageType('StreamingRecognitionResult', (_message.Message,), dict(
+  DESCRIPTOR = _STREAMINGRECOGNITIONRESULT,
+  __module__ = 'speech_pb2'
+  # @@protoc_insertion_point(class_scope:parlance.patter.speech.v1.StreamingRecognitionResult)
+  ))
+_sym_db.RegisterMessage(StreamingRecognitionResult)
 
 SpeechRecognitionResult = _reflection.GeneratedProtocolMessageType('SpeechRecognitionResult', (_message.Message,), dict(
   DESCRIPTOR = _SPEECHRECOGNITIONRESULT,
@@ -424,8 +660,8 @@ _SPEECH = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=1003,
-  serialized_end=1115,
+  serialized_start=1733,
+  serialized_end=1981,
   methods=[
   _descriptor.MethodDescriptor(
     name='Recognize',
@@ -434,6 +670,15 @@ _SPEECH = _descriptor.ServiceDescriptor(
     containing_service=None,
     input_type=_RECOGNIZEREQUEST,
     output_type=_RECOGNIZERESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='StreamingRecognize',
+    full_name='parlance.patter.speech.v1.Speech.StreamingRecognize',
+    index=1,
+    containing_service=None,
+    input_type=_STREAMINGRECOGNIZEREQUEST,
+    output_type=_STREAMINGRECOGNIZERESPONSE,
     options=None,
   ),
 ])

@@ -7,7 +7,7 @@ import "google/protobuf/duration.proto";
 service Speech {
     rpc Recognize(RecognizeRequest) returns (RecognizeResponse);
 
-    // rpc StreamingRecognize(stream StreamingRecognizeRequest) returns (stream StreamingRecognizeResponse);
+    rpc StreamingRecognize(stream StreamingRecognizeRequest) returns (stream StreamingRecognizeResponse);
 }
 
 // The top-level message sent by the client for the `Recognize` method.
@@ -18,6 +18,58 @@ message RecognizeRequest {
 
   // *Required* The audio data to be recognized.
   RecognitionAudio audio = 2;
+}
+
+// The top-level message sent by the client for the `StreamingRecognize` method.
+// Multiple `StreamingRecognizeRequest` messages are sent. The first message
+// must contain a `streaming_config` message and must not contain `audio` data.
+// All subsequent messages must contain `audio` data and must not contain a
+// `streaming_config` message.
+message StreamingRecognizeRequest {
+  // The streaming request, which is either a streaming config or audio content.
+  oneof streaming_request {
+    // Provides information to the recognizer that specifies how to process the
+    // request. The first `StreamingRecognizeRequest` message must contain a
+    // `streaming_config`  message.
+    StreamingRecognitionConfig streaming_config = 1;
+
+    // The audio data to be recognized. Sequential chunks of audio data are sent
+    // in sequential `StreamingRecognizeRequest` messages. The first
+    // `StreamingRecognizeRequest` message must not contain `audio_content` data
+    // and all subsequent `StreamingRecognizeRequest` messages must contain
+    // `audio_content` data. The audio bytes must be encoded as specified in
+    // `RecognitionConfig`. Note: as with all bytes fields, protobuffers use a
+    // pure binary representation (not base64). See
+    // [audio limits](https://cloud.google.com/speech/limits#content).
+    bytes audio_content = 2;
+  }
+}
+
+// Provides information to the recognizer that specifies how to process the
+// request.
+message StreamingRecognitionConfig {
+  // *Required* Provides information to the recognizer that specifies how to
+  // process the request.
+  RecognitionConfig config = 1;
+
+  // *Optional* If `false` or omitted, the recognizer will perform continuous
+  // recognition (continuing to wait for and process audio even if the user
+  // pauses speaking) until the client closes the input stream (gRPC API) or
+  // until the maximum time limit has been reached. May return multiple
+  // `StreamingRecognitionResult`s with the `is_final` flag set to `true`.
+  //
+  // If `true`, the recognizer will detect a single spoken utterance. When it
+  // detects that the user has paused or stopped speaking, it will return an
+  // `END_OF_SINGLE_UTTERANCE` event and cease recognition. It will return no
+  // more than one `StreamingRecognitionResult` with the `is_final` flag set to
+  // `true`.
+  bool single_utterance = 2;
+
+  // *Optional* If `true`, interim results (tentative hypotheses) may be
+  // returned as they become available (these interim results are indicated with
+  // the `is_final=false` flag).
+  // If `false` or omitted, only `is_final=true` result(s) are returned.
+  bool interim_results = 3;
 }
 
 // Provides information to the recognizer that specifies how to process the
@@ -107,6 +159,107 @@ message RecognizeResponse {
   // *Output-only* Sequential list of transcription results corresponding to
   // sequential portions of audio.
   repeated SpeechRecognitionResult results = 2;
+}
+
+// `StreamingRecognizeResponse` is the only message returned to the client by
+// `StreamingRecognize`. A series of zero or more `StreamingRecognizeResponse`
+// messages are streamed back to the client. If there is no recognizable
+// audio, and `single_utterance` is set to false, then no messages are streamed
+// back to the client.
+//
+// Here's an example of a series of ten `StreamingRecognizeResponse`s that might
+// be returned while processing audio:
+//
+// 1. results { alternatives { transcript: "tube" } stability: 0.01 }
+//
+// 2. results { alternatives { transcript: "to be a" } stability: 0.01 }
+//
+// 3. results { alternatives { transcript: "to be" } stability: 0.9 }
+//    results { alternatives { transcript: " or not to be" } stability: 0.01 }
+//
+// 4. results { alternatives { transcript: "to be or not to be"
+//                             confidence: 0.92 }
+//              alternatives { transcript: "to bee or not to bee" }
+//              is_final: true }
+//
+// 5. results { alternatives { transcript: " that's" } stability: 0.01 }
+//
+// 6. results { alternatives { transcript: " that is" } stability: 0.9 }
+//    results { alternatives { transcript: " the question" } stability: 0.01 }
+//
+// 7. results { alternatives { transcript: " that is the question"
+//                             confidence: 0.98 }
+//              alternatives { transcript: " that was the question" }
+//              is_final: true }
+//
+// Notes:
+//
+// - Only two of the above responses #4 and #7 contain final results; they are
+//   indicated by `is_final: true`. Concatenating these together generates the
+//   full transcript: "to be or not to be that is the question".
+//
+// - The others contain interim `results`. #3 and #6 contain two interim
+//   `results`: the first portion has a high stability and is less likely to
+//   change; the second portion has a low stability and is very likely to
+//   change. A UI designer might choose to show only high stability `results`.
+//
+// - The specific `stability` and `confidence` values shown above are only for
+//   illustrative purposes. Actual values may vary.
+//
+// - In each response, only one of these fields will be set:
+//     `error`,
+//     `speech_event_type`, or
+//     one or more (repeated) `results`.
+message StreamingRecognizeResponse {
+  // Indicates the type of speech event.
+  enum SpeechEventType {
+    // No speech event specified.
+    SPEECH_EVENT_UNSPECIFIED = 0;
+
+    // This event indicates that the server has detected the end of the user's
+    // speech utterance and expects no additional speech. Therefore, the server
+    // will not process additional audio (although it may subsequently return
+    // additional results). The client should stop sending additional audio
+    // data, half-close the gRPC connection, and wait for any additional results
+    // until the server closes the gRPC connection. This event is only sent if
+    // `single_utterance` was set to `true`, and is not used otherwise.
+    END_OF_SINGLE_UTTERANCE = 1;
+  }
+
+  // *Output-only* If set, returns a [google.rpc.Status][google.rpc.Status] message that
+  // specifies the error for the operation.
+  //google.rpc.Status error = 1;
+
+  // *Output-only* This repeated list contains zero or more results that
+  // correspond to consecutive portions of the audio currently being processed.
+  // It contains zero or more `is_final=false` results followed by zero or one
+  // `is_final=true` result (the newly settled portion).
+  repeated StreamingRecognitionResult results = 2;
+
+  // *Output-only* Indicates the type of speech event.
+  SpeechEventType speech_event_type = 4;
+}
+
+// A streaming speech recognition result corresponding to a portion of the audio
+// that is currently being processed.
+message StreamingRecognitionResult {
+  // *Output-only* May contain one or more recognition hypotheses (up to the
+  // maximum specified in `max_alternatives`).
+  repeated SpeechRecognitionAlternative alternatives = 1;
+
+  // *Output-only* If `false`, this `StreamingRecognitionResult` represents an
+  // interim result that may change. If `true`, this is the final time the
+  // speech service will return this particular `StreamingRecognitionResult`,
+  // the recognizer will not return any further hypotheses for this portion of
+  // the transcript and corresponding audio.
+  bool is_final = 2;
+
+  // *Output-only* An estimate of the likelihood that the recognizer will not
+  // change its guess about this interim result. Values range from 0.0
+  // (completely unstable) to 1.0 (completely stable).
+  // This field is only provided for interim results (`is_final=false`).
+  // The default of 0.0 is a sentinel value indicating `stability` was not set.
+  float stability = 3;
 }
 
 // A speech recognition result corresponding to a portion of the audio.
