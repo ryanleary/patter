@@ -2,13 +2,18 @@ import re
 
 
 def convert_state_dict(package):
+    bidirectional = "lookahead.0.weight" not in package['state_dict']
     explicit_mapping = {
         "fc.0.module.0.bias": "rnn.batch_norm.bias",
         "fc.0.module.0.running_mean": "rnn.batch_norm.running_mean",
         "fc.0.module.0.running_var": "rnn.batch_norm.running_var",
         "fc.0.module.0.weight": "rnn.batch_norm.weight",
-        "fc.0.module.1.weight": "output.0.weight"
     }
+    if bidirectional:
+        explicit_mapping["fc.0.module.1.weight"] = "output.0.weight"
+    else:
+        explicit_mapping["lookahead.0.weight"] = "output.0.weight"
+        explicit_mapping["fc.0.module.1.weight"] = "output.2.weight"
     cnn_types = {
         0: "cnn",
         1: "batch_norm",
@@ -38,6 +43,8 @@ def convert_state_dict(package):
 
 
 def generate_config(package):
+    bidirectional = package['bidirectional'] if 'bidirectional' in package else True
+
     config = {
         'cnn': [
             {
@@ -72,12 +79,18 @@ def generate_config(package):
         },
         'model': 'DeepSpeechOptim',
         'rnn': {
-            'batch_norm': True,
-            'bidirectional': True,
+            'batch_norm': not bidirectional,
+            'bidirectional': bidirectional,
             'layers': package['hidden_layers'],
             'noise': None,
             'rnn_type': package['rnn_type'],
             'size': package['hidden_size']
         }
     }
+    if not bidirectional:
+        config['ctx'] = {
+            "context": package['state_dict']['lookahead.0.weight'].shape[1] - 1,
+            "activation": "hardtanh",
+            "activation_params": [0, 20]
+        }
     return config
