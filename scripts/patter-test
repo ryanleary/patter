@@ -36,11 +36,11 @@ def main():
     errors = evaluator.eval(model, test_corpus)
     print('Test Summary:')
     print('WER {wer:.3f} [ {errs} / {tokens}, {ins} ins, {dels} del, {sub} sub ]'
-          .format(wer=errors.wer, errs=int(errors.wer*errors.tokens), tokens=errors.tokens,
+          .format(wer=errors.wer, errs=int(errors.wer*errors.tokens//100), tokens=errors.tokens,
                   ins=errors.word_errors["insert"], dels=errors.word_errors["delete"],
                   sub=errors.word_errors["replace"]))
     print('CER {cer:.3f} [ {errs} / {chars}, {ins} ins, {dels} del, {sub} sub ]'
-          .format(cer=errors.cer, errs=int(errors.cer*errors.chars), chars=errors.chars,
+          .format(cer=errors.cer, errs=int(errors.cer*errors.chars//100), chars=errors.chars,
                   ins=errors.char_errors["insert"], dels=errors.char_errors["delete"],
                   sub=errors.char_errors["replace"]))
 
