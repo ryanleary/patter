@@ -32,7 +32,8 @@ class ModelFactory(object):
 
         if include_package:
             del package['state_dict']
-            del package['optim_dict']
+            if 'optim_dict' in package:
+                del package['optim_dict']
             return model, package
 
         return model
