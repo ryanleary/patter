@@ -3,17 +3,20 @@ import re
 
 def convert_state_dict(package):
     bidirectional = "lookahead.0.weight" not in package['state_dict']
-    explicit_mapping = {
-        "fc.0.module.0.bias": "rnn.batch_norm.bias",
-        "fc.0.module.0.running_mean": "rnn.batch_norm.running_mean",
-        "fc.0.module.0.running_var": "rnn.batch_norm.running_var",
-        "fc.0.module.0.weight": "rnn.batch_norm.weight",
-    }
+    explicit_mapping = {}
     if bidirectional:
-        explicit_mapping["fc.0.module.1.weight"] = "output.0.weight"
+        explicit_mapping["fc.0.module.0.weight"] = "output.0.module.weight"
+        explicit_mapping["fc.0.module.0.bias"] = "output.0.module.bias"
+        explicit_mapping["fc.0.module.0.running_mean"] = "output.0.module.running_mean"
+        explicit_mapping["fc.0.module.0.running_var"] = "output.0.module.running_var"
+        explicit_mapping["fc.0.module.1.weight"] = "output.1.weight"
     else:
+        explicit_mapping["fc.0.module.0.weight"] = "output.2.module.weight"
+        explicit_mapping["fc.0.module.0.bias"] = "output.2.module.bias"
+        explicit_mapping["fc.0.module.0.running_mean"] = "output.2.module.running_mean"
+        explicit_mapping["fc.0.module.0.running_var"] = "output.2.module.running_var"
         explicit_mapping["lookahead.0.weight"] = "output.0.weight"
-        explicit_mapping["fc.0.module.1.weight"] = "output.2.weight"
+        explicit_mapping["fc.0.module.1.weight"] = "output.3.weight"
     cnn_types = {
         0: "cnn",
         1: "batch_norm",
@@ -44,7 +47,6 @@ def convert_state_dict(package):
 
 def generate_config(package):
     bidirectional = package['bidirectional'] if 'bidirectional' in package else True
-
     config = {
         'cnn': [
             {
@@ -79,7 +81,7 @@ def generate_config(package):
         },
         'model': 'DeepSpeechOptim',
         'rnn': {
-            'batch_norm': not bidirectional,
+            'batch_norm': True,
             'bidirectional': bidirectional,
             'layers': package['hidden_layers'],
             'noise': None,

@@ -33,7 +33,6 @@ class DeepBatchRNN(nn.Module):
                  batch_norm=True, sum_directions=True, **kwargs):
         super(DeepBatchRNN, self).__init__()
         self._bidirectional = bidirectional
-        self.batch_norm = nn.BatchNorm1d(hidden_size) if batch_norm else None
         rnns = []
         rnn = BatchRNN(input_size=input_size, hidden_size=hidden_size, rnn_type=rnn_type, bidirectional=bidirectional,
                        batch_norm=False)
@@ -53,8 +52,6 @@ class DeepBatchRNN(nn.Module):
         max_seq_length = x.size(0)
         x = nn.utils.rnn.pack_padded_sequence(x, lengths.data.squeeze().cpu().numpy())
         x = self.rnns(x)
-        if self.batch_norm is not None:
-            x = x._replace(data=self.batch_norm(x.data))
         x, _ = nn.utils.rnn.pad_packed_sequence(x)
 
         # hack: check if the seq_len of the tensor returned from pad_packed_sequence matches the max_seq_len, if not

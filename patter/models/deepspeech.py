@@ -2,9 +2,9 @@ import math
 import torch.nn as nn
 import torchvision.utils as vutils
 
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from patter.models.model import SpeechModel
-from patter.layers import NoiseRNN, DeepBatchRNN, LookaheadConvolution
+from patter.layers import NoiseRNN, DeepBatchRNN, LookaheadConvolution, SequenceWise
 from .activation import InferenceBatchSoftmax, Swish
 
 try:
@@ -51,6 +51,8 @@ class DeepSpeechOptim(SpeechModel):
         if not cfg['rnn']['bidirectional']:
             output.append(LookaheadConvolution(cfg['rnn']['size'], context=cfg['ctx']['context']))
             output.append(activations[cfg['ctx']['activation']](*cfg['ctx']['activation_params']))
+        if cfg['rnn']['batch_norm']:
+            output.append(SequenceWise(nn.BatchNorm1d(cfg['rnn']['size'])))
         output.append(nn.Linear(cfg['rnn']['size'], len(self.labels), bias=False))
         self.output = nn.Sequential(*output)
 
@@ -89,8 +91,8 @@ class DeepSpeechOptim(SpeechModel):
         ih = ((name, param.data) for name, param in self.named_parameters() if 'weight_ih' in name)
         hh = ((name, param.data) for name, param in self.named_parameters() if 'weight_hh' in name)
         b = ((name, param.data) for name, param in self.named_parameters() if 'bias' in name)
-        w = ((name, param.data) for name, param in self.named_parameters() if 'weight' in name and 'rnn' not in name and "batch_norm" not in name)
-        bn_w = ((name, param.data) for name, param in self.named_parameters() if 'batch_norm' in name and 'weight' in name)
+        w = ((name, param.data) for name, param in self.named_parameters() if 'weight' in name and 'rnn' not in name and "batch_norm" not in name and param.dim() > 1)
+        bn_w = ((name, param.data) for name, param in self.named_parameters() if ('batch_norm' in name or param.dim() == 1) and 'weight' in name)
 
         for t in ih:
             nn.init.xavier_uniform(t[1])

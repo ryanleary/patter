@@ -19,7 +19,7 @@ class SequenceWise(nn.Module):
         return x
 
     def __repr__(self):
-        tmpstr = self.__class__.__name__ + ' (\n'
+        tmpstr = self.__class__.__name__ + '('
         tmpstr += self.module.__repr__()
         tmpstr += ')'
         return tmpstr
