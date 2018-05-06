@@ -8,7 +8,7 @@ from patter.layers import NoiseRNN, DeepBatchRNN, LookaheadConvolution, Sequence
 from .activation import InferenceBatchSoftmax, Swish
 
 try:
-    from warpctc_pytorch import CTCLoss
+    from warpctc import CTCLoss
 except ImportError:
     print("WARN: CTCLoss not imported. Use only for inference.")
     CTCLoss = lambda x, y: 0
@@ -67,7 +67,7 @@ class DeepSpeechOptim(SpeechModel):
         :return:
         """
         if mode and self.loss_func is None:
-            self.loss_func = CTCLoss()
+            self.loss_func = CTCLoss(size_average=False)
         super().train(mode=mode)
 
     def loss(self, x, y, x_length=None, y_length=None):
@@ -81,7 +81,7 @@ class DeepSpeechOptim(SpeechModel):
         """
         if self.loss_func is None:
             self.train()
-        return self.loss_func(x, y, x_length, y_length)
+        return self.loss_func(x, x_length, y, y_length)
 
     def init_weights(self):
         """
@@ -92,18 +92,23 @@ class DeepSpeechOptim(SpeechModel):
         hh = ((name, param.data) for name, param in self.named_parameters() if 'weight_hh' in name)
         b = ((name, param.data) for name, param in self.named_parameters() if 'bias' in name)
         w = ((name, param.data) for name, param in self.named_parameters() if 'weight' in name and 'rnn' not in name and "batch_norm" not in name and param.dim() > 1)
-        bn_w = ((name, param.data) for name, param in self.named_parameters() if ('batch_norm' in name or param.dim() == 1) and 'weight' in name)
 
         for t in ih:
-            nn.init.xavier_uniform(t[1])
+            if t[0] in param_names:
+                param_names.remove(t[0])
+            nn.init.xavier_uniform_(t[1])
         for t in w:
-            nn.init.xavier_uniform(t[1])
+            if t[0] in param_names:
+                param_names.remove(t[0])
+            nn.init.xavier_uniform_(t[1])
         for t in hh:
-            nn.init.orthogonal(t[1])
+            if t[0] in param_names:
+                param_names.remove(t[0])
+            nn.init.orthogonal_(t[1])
         for t in b:
-            nn.init.constant(t[1], 0)
-        for t in bn_w:
-            nn.init.constant(t[1], 1)
+            if t[0] in param_names:
+                param_names.remove(t[0])
+            nn.init.constant_(t[1], 0)
 
     def flatten_parameters(self):
         """
@@ -148,10 +153,10 @@ class DeepSpeechOptim(SpeechModel):
                             kernel_size=tuple(cnn_cfg['kernel']),
                             stride=tuple(cnn_cfg['stride']),
                             padding=tuple(cnn_cfg['padding']))
-            cnns.append(("{}.cnn".format(x), cnn),)
+            cnns.append(("{}-cnn".format(x), cnn),)
             if cnn_cfg['batch_norm']:
-                cnns.append(("{}.batch_norm".format(x), nn.BatchNorm2d(cnn_cfg['filters'])))
-            cnns.append(("{}.act".format(x), activations[cnn_cfg['activation']](*cnn_cfg['activation_params'])),)
+                cnns.append(("{}-bn".format(x), nn.BatchNorm2d(cnn_cfg['filters'])))
+            cnns.append(("{}-act".format(x), activations[cnn_cfg['activation']](*cnn_cfg['activation_params'])),)
         return nn.Sequential(OrderedDict(cnns))
 
     def _get_rnn_input_size(self, sample_rate, window_size):

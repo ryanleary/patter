@@ -46,14 +46,13 @@ class Trainer(object):
         :return:
         """
         # warm up with the largest sized minibatch
-        data = corpus.get_largest_minibatch(self.cfg['batch_size'])
-        feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, requires_grad=False) for i in data)
+        feat, target, feat_len, target_len = corpus.get_largest_minibatch(self.cfg['batch_size'])
         if self.cuda:
             feat = feat.cuda(async=True)
         # self.logger.add_graph(model, (feat, feat_len))
         optimizer.zero_grad()
         output, output_len = model(feat, feat_len)
-        loss = model.module.loss(output, target, output_len.cpu().squeeze(), target_len)
+        loss = model.module.loss(output, target, output_len.cpu().squeeze(0), target_len)
         loss.backward()
         optimizer.step()
         del feat
@@ -171,7 +170,7 @@ class Trainer(object):
             data_time.update(time.time() - end)
 
             # create variables
-            feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, requires_grad=False) for i in data)
+            feat, target, feat_len, target_len = data
             if self.cuda:
                 feat = feat.cuda(async=True)
 
@@ -181,27 +180,23 @@ class Trainer(object):
             # feat is (batch, 1,  feat_dim,  seq_len)
             # output is (seq_len, batch, output_dim)
             output, output_len = model(feat, feat_len)
-            loss = model.module.loss(output, target, output_len.cpu().squeeze(), target_len)
+            loss = model.module.loss(output, target, output_len.cpu().squeeze(0), target_len)
 
             # munge the loss
-            loss.div_(feat.size(0))
-            scalar_loss = loss.data.sum()
+            scalar_loss = loss.item()/feat.size(0)
             if abs(scalar_loss) == math.inf:
                 print("WARNING: received an inf loss, setting loss value to 0")
-                loss_value = 0
-            else:
-                loss_value = scalar_loss
-            self.logger.log_step(epoch*len(train_loader) + i, loss_value)
-            losses.update(loss_value, feat.size(0))
+                scalar_loss = 0
+            self.logger.log_step(epoch*len(train_loader) + i, scalar_loss)
+            losses.update(scalar_loss, feat.size(0))
 
             # compute gradient
             loss.backward()
             if self.max_norm:
-                torch.nn.utils.clip_grad_norm(model.parameters(), self.max_norm)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), self.max_norm)
             optimizer.step()
 
             del feat
-            del loss_value
             del scalar_loss
             del loss
             del output
@@ -220,11 +215,6 @@ class Trainer(object):
                                                                       loss=losses))
             else:
                 loader.set_postfix(loss=losses.val)
-
-            if epoch == 0 and (i%2) == 0:
-                # this is a hack due to a pathological memory allocation case triggered during the sortagrad
-                # curriculum learning procedure
-                torch.cuda.empty_cache()
 
             if self.output['checkpoint_interval'] > 0 and (i % self.output['checkpoint_interval']) == 0:
                 torch.save(SpeechModel.serialize(model.module, optimizer=optimizer, epoch=epoch, iteration=i), self.output['model_path']+".ckpt")

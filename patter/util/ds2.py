@@ -19,7 +19,7 @@ def convert_state_dict(package):
         explicit_mapping["fc.0.module.1.weight"] = "output.3.weight"
     cnn_types = {
         0: "cnn",
-        1: "batch_norm",
+        1: "bn",
         2: "act"
     }
     blacklist = ['rnns.0.batch_norm.module.weight', 'rnns.0.batch_norm.module.bias',
@@ -35,8 +35,7 @@ def convert_state_dict(package):
             idx = int(parts[1])
             layer_idx = idx // 3
             layer_type = idx % 3
-            parts[1] = str(layer_idx)
-            parts.insert(2, cnn_types[layer_type])
+            parts[1] = str(layer_idx) + "-" + cnn_types[layer_type]
             k = ".".join(parts)
         k = re.sub(r'rnn\.rnns\.(\d+)\.batch_norm\.module\.(.*)', r'rnn.rnns.\1.batch_norm.\2', k)
         if k in explicit_mapping:

@@ -75,25 +75,26 @@ def validate_batch(i, data, model, decoder, target_decoder, verbose=False, losse
     loss_fn = model.module.loss if type(model) == torch.nn.DataParallel else model.loss
     is_cuda = model.module.is_cuda if type(model) == torch.nn.DataParallel else model.is_cuda
     # create variables
-    feat, target, feat_len, target_len = tuple(torch.autograd.Variable(i, volatile=True) for i in data)
-    if is_cuda:
-        feat = feat.cuda()
-        target = target.cpu()
-        feat_len = feat_len.cpu()
-        target_len = target_len.cpu()
+    feat, target, feat_len, target_len = data
+    with torch.no_grad():
+        if is_cuda:
+            feat = feat.cuda()
+            target = target.cpu()
+            feat_len = feat_len.cpu()
+            target_len = target_len.cpu()
 
-    # compute output
-    output, output_len = model(feat, feat_len)
-    output_len = output_len.cpu().squeeze()
+        # compute output
+        output, output_len = model(feat, feat_len)
+        output_len = output_len.cpu().squeeze(0)
 
-    if losses is not None:
-        mb_loss = loss_fn(output, target, output_len, target_len)
-        avg_loss = mb_loss.data.sum() / feat.size(0)  # average the loss by minibatch
-        inf = math.inf
-        if avg_loss == inf or avg_loss == -inf:
-            print("WARNING: received an inf loss, setting loss value to 0")
-            avg_loss = 0
-        losses.update(avg_loss, feat.size(0))
+        if losses is not None:
+            mb_loss = loss_fn(output, target, output_len, target_len)
+            avg_loss = mb_loss.data.sum() / feat.size(0)  # average the loss by minibatch
+            inf = math.inf
+            if avg_loss == inf or avg_loss == -inf:
+                print("WARNING: received an inf loss, setting loss value to 0")
+                avg_loss = 0
+            losses.update(avg_loss, feat.size(0))
 
     # do the decode
     decoded_output, _, _ = decoder.decode(output.transpose(0, 1).data, output_len.data)

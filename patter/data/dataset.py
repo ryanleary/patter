@@ -94,7 +94,7 @@ class AudioDataset(Dataset):
         feats = torch.zeros(1, minibatch_size, freq_size, max_seqlength)
         input_lengths = torch.IntTensor(1, minibatch_size)
         input_lengths.fill_(max_seqlength)
-        return feats, targets, input_lengths, input_lengths
+        return feats, targets, input_lengths, input_lengths.squeeze(0)
 
     def parse_transcript(self, transcript_path):
         with open(transcript_path, 'r', encoding="utf-8") as transcript_file:
