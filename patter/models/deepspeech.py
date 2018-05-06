@@ -94,20 +94,12 @@ class DeepSpeechOptim(SpeechModel):
         w = ((name, param.data) for name, param in self.named_parameters() if 'weight' in name and 'rnn' not in name and "batch_norm" not in name and param.dim() > 1)
 
         for t in ih:
-            if t[0] in param_names:
-                param_names.remove(t[0])
             nn.init.xavier_uniform_(t[1])
         for t in w:
-            if t[0] in param_names:
-                param_names.remove(t[0])
             nn.init.xavier_uniform_(t[1])
         for t in hh:
-            if t[0] in param_names:
-                param_names.remove(t[0])
             nn.init.orthogonal_(t[1])
         for t in b:
-            if t[0] in param_names:
-                param_names.remove(t[0])
             nn.init.constant_(t[1], 0)
 
     def flatten_parameters(self):
