@@ -55,7 +55,6 @@ class GreedyCTCDecoder(Decoder):
             offsets: time step per character predicted
         """
         _, max_probs = torch.max(probs, 2)
-        sizes = sizes.squeeze(0) if sizes is not None else None
         strings, offsets = self.convert_to_strings(max_probs.view(max_probs.size(0), max_probs.size(1)), sizes,
                                                    remove_repetitions=True, return_offsets=True)
         return strings, offsets, None
